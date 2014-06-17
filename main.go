@@ -1,18 +1,27 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
-    "strconv"
-	"encoding/json"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"reflect"
+	"runtime"
+	"strconv"
+	"strings"
 )
 
 var (
-	gFlagRedisAddr = flag.String("redis", "localhost:6379", "address(host:port) of redis server")
-	gListenPort    = flag.Int("port", 9099, "port to listen on")
+	gFailStringInvalidReq = []byte(`{status: "failed", msg: "invalid request argument"}`)
+	gFlagRedisAddr        = flag.String("redis", "localhost:6379", "address(host:port) of redis server")
+	gListenPort           = flag.Int("port", 9099, "port to listen on")
+	gFuncMap              = map[string]interface{}{
+		getLowerFuncName(GetXiamiSongList): GetXiamiSongList,
+		getLowerFuncName(GetXiamiAlbum):    GetXiamiAlbum,
+		getLowerFuncName(GetXiamiCollect):  GetXiamiCollect,
+	}
 )
 
 type Song struct {
@@ -82,19 +91,55 @@ func showUsage() {
 	flag.PrintDefaults()
 }
 
+func getLowerFuncName(i interface{}) string {
+	funcName := strings.ToLower(runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name())
+	return strings.Split(funcName, ".")[1]
+}
+
+func callFunc(myFunc, param interface{}) []reflect.Value {
+	return reflect.ValueOf(myFunc).Call([]reflect.Value{reflect.ValueOf(param)})
+}
+
+func createServMux() http.Handler {
+	servMux := http.NewServeMux()
+	servMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		queries := r.URL.Query()
+		callback := strings.ToLower(queries.Get("c"))
+		provider := strings.ToLower(queries.Get("p"))
+		reqType := strings.ToLower(strings.TrimSpace(queries.Get("t")))
+		id := strings.TrimSpace(queries.Get("i"))
+		// get cache first
+		result := GetCache(provider, reqType, id)
+		if nil == result {
+			myGetFunc, ok := gFuncMap["get"+provider+reqType]
+			if !ok {
+				result = gFailStringInvalidReq
+			} else {
+				sl := callFunc(myGetFunc, id)[0].Interface().(*SongList)
+				result = []byte(sl.ToString())
+				// update cache
+				SetCache(provider, reqType, id, result)
+			}
+		}
+		if "" != callback {
+			result = []byte(callback + "(" + string(result) + ");")
+		}
+		w.Write(result)
+	})
+	return servMux
+}
+
 func main() {
-	//log.Println(GetXiamiSongList("1772292423,20526").ToString())
-	//log.Println(GetXiamiCollect("31181538").ToString())
-	//log.Println(GetXiamiAlbum("2649").ToString())
 	flag.Usage = showUsage
 	flag.Parse()
 
-    // start http server
-    serverAddr = ":" + strconv.Itoa(*gListenPort)
-    httpServer = &http.Server{
-        Addr: serverAddr,
-    }
-    log.Printf("Listening on %s ...", serverAddr)
-    log.Fatal(httpServer.ListenAndServe())
-}
+	// start http server
+	serverAddr := ":" + strconv.Itoa(*gListenPort)
+	httpServer := &http.Server{
+		Addr:    serverAddr,
+		Handler: createServMux(),
+	}
 
+	log.Printf("Listening at %s ...", serverAddr)
+	log.Fatal(httpServer.ListenAndServe())
+}

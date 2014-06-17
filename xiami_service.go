@@ -11,7 +11,7 @@ const (
 	gXiamiSongSplitter = ","
 	gXiamiRetOK        = "ok"
 	gXiamiRetFail      = "failed"
-	gXiamiProvider     = "XiaMi Music Service"
+	gXiamiProvider     = "xiami"
 	gXiamiAPIUrlBase   = "http://www.xiami.com/app"
 	gXiamiSongUrl      = "/android/song/id/"
 	gXiamiAlbumUrl     = "/iphone/album/id/"

@@ -6,7 +6,6 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"io/ioutil"
 	"log"
-	"strings"
 	"time"
 )
 
@@ -45,17 +44,16 @@ var (
 )
 
 func GenCacheKey(provider, reqType, id string) string {
-	id = strings.TrimSpace(id)
 	if "" == id {
 		log.Printf("failed to generate cache key: id is empty")
 		return ""
 	}
-	provider, ok := gProviderMap[strings.ToLower(strings.TrimSpace(provider))]
+	provider, ok := gProviderMap[provider]
 	if !ok {
 		log.Printf("failed to generate cache key: provider %s not supported.", provider)
 		return ""
 	}
-	reqType, ok = gReqTypeMap[strings.ToLower(strings.TrimSpace(reqType))]
+	reqType, ok = gReqTypeMap[reqType]
 	if !ok {
 		log.Printf("failed to generate cache key: request type %s not supported.", reqType)
 		return ""
@@ -76,17 +74,20 @@ func GetCache(provider, reqType, id string) []byte {
 		log.Printf("failed to get from redis server %s: %s", gFlagRedisAddr, err)
 		return nil
 	}
+	if nil == value {
+		return nil
+	}
 
 	buff := bytes.NewBuffer(value.([]byte))
 	gzipRdr, err := gzip.NewReader(buff)
-	defer gzipRdr.Close()
 	if nil != err {
 		log.Printf("failed to decompress cached value: %s", err)
 		return nil
 	}
+	defer gzipRdr.Close()
 	data, err := ioutil.ReadAll(gzipRdr)
 	if nil != err {
-		log.Printf("failed to decompress cached value: %s", err)
+		log.Printf("failed to read cached value: %s", err)
 		return nil
 	}
 	return data
@@ -97,10 +98,15 @@ func SetCache(provider, reqType, id string, value []byte) bool {
 	if "" == key {
 		return false
 	}
+
 	var buff bytes.Buffer
 	gzipWtr := gzip.NewWriter(&buff)
-	defer gzipWtr.Close()
 	_, err := gzipWtr.Write(value)
+	if nil != err {
+		log.Printf("failed to compress value: %s", err)
+		return false
+	}
+	err = gzipWtr.Close()
 	if nil != err {
 		log.Printf("failed to compress value: %s", err)
 		return false
