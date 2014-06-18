@@ -11,8 +11,8 @@ import (
 
 var (
 	gProviderMap = map[string]string{
-		"xiami":    "x",
-		"netease":  "n",
+		"xiami":   "x",
+		"netease": "n",
 	}
 
 	gReqTypeMap = map[string]string{

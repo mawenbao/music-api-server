@@ -1,9 +1,9 @@
 package main
 
 import (
-    "time"
 	"bytes"
 	"testing"
+	"time"
 )
 
 func TestGetSetCache(t *testing.T) {
