@@ -1,6 +1,7 @@
 package main
 
 import (
+    "time"
 	"bytes"
 	"testing"
 )
@@ -10,7 +11,7 @@ func TestGetSetCache(t *testing.T) {
 	reqType := "songlist"
 	id := "12345"
 	val := []byte("hello world")
-	ret := SetCache(provider, reqType, id, val)
+	ret := SetCache(provider, reqType, id, time.Duration(0), val)
 	if !ret {
 		t.Fatalf("failed to set redis cache")
 	}
