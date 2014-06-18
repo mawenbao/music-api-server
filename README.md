@@ -38,8 +38,11 @@
                 "song_lrc": "歌词文件地址",
                 "song_author": "演唱者",
                 "song_provider": "音乐提供商"
+            }
         ]
     }   
+
+如果有`c=abc123`请求参数，则实际以[jsonp](http://en.wikipedia.org/wiki/JSONP)方式返回数据。
 
 ## TODO
 
