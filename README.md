@@ -1,4 +1,4 @@
-# music service api
+# music api server
 
 音乐服务的api通用接口，目前已支持的音乐服务只有虾米:
 
