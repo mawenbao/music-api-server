@@ -13,13 +13,12 @@ var (
 	gProviderMap = map[string]string{
 		"xiami":    "x",
 		"netease":  "n",
-		"163music": "n",
 	}
 
 	gReqTypeMap = map[string]string{
 		"album":    "a",
 		"collect":  "c",
-		"songlist": "s",
+		"songlist": "l",
 	}
 
 	gRedisPool = &redis.Pool{
