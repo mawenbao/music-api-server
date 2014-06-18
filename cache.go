@@ -27,7 +27,7 @@ var (
 		Dial: func() (redis.Conn, error) {
 			c, err := redis.Dial("tcp", *gFlagRedisAddr)
 			if nil != err {
-				log.Printf("failed to connect to redis server %s: %s", gFlagRedisAddr, err)
+				log.Printf("failed to connect to redis server %s: %s", *gFlagRedisAddr, err)
 				return nil, err
 			}
 			return c, err
@@ -35,7 +35,7 @@ var (
 		TestOnBorrow: func(c redis.Conn, t time.Time) error {
 			_, err := c.Do("PING")
 			if nil != err {
-				log.Printf("failed to ping redis server %s: %s", gFlagRedisAddr, err)
+				log.Printf("failed to ping redis server %s: %s", *gFlagRedisAddr, err)
 			}
 			return err
 		},
@@ -72,7 +72,7 @@ func GetCache(provider, reqType, id string) []byte {
 	defer redisConn.Close()
 	value, err := redisConn.Do("GET", key)
 	if nil != err {
-		log.Printf("failed to get from redis server %s: %s", gFlagRedisAddr, err)
+		log.Printf("failed to get from redis server %s: %s", *gFlagRedisAddr, err)
 		return nil
 	}
 	if nil == value {
@@ -125,7 +125,7 @@ func SetCache(provider, reqType, id string, expires time.Duration, value []byte)
 		_, err = redisConn.Do("SET", key, buff.Bytes())
 	}
 	if nil != err {
-		log.Printf("failed to send value to redis server %s: %s", gFlagRedisAddr, err)
+		log.Printf("failed to send value to redis server %s: %s", *gFlagRedisAddr, err)
 		return false
 	}
 	return true
