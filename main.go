@@ -21,7 +21,7 @@ var (
 	gFlagRedisAddr       = flag.String("redis", "localhost:6379", "address(host:port) of redis server")
 	gFlagListenPort      = flag.Int("port", 9099, "port to listen on")
 	gFlagLogfile         = flag.String("log", "", "path of the log file")
-	gFlagCacheExpiration = flag.Int("expire", 7200, "expiration time(in seconds) of redis cache, default is two hours")
+	gFlagCacheExpiration = flag.Int("expire", 7200, "expiry time(in seconds) of redis cache, default is two hours")
 	// available music service functions
 	gFuncMap = map[string]interface{}{
 		getLowerFuncName(GetXiamiSongList): GetXiamiSongList,
@@ -92,7 +92,7 @@ func GetUrl(client *http.Client, url string) []byte {
 }
 
 func showUsage() {
-	fmt.Println("Usage %s [-redis <redis server port>][-port <listen port>]")
+	fmt.Println("Usage %s [-redis <redis server port>][-port <listen port>][-log <log file>][-expire <expiry time>]")
 	fmt.Println("Flags:")
 	flag.PrintDefaults()
 }

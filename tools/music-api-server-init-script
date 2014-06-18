@@ -1,0 +1,71 @@
+#!/bin/bash
+
+GOPATH=/SET/YOUR/GOPATH/HERE
+
+DAEMON="music-api-server"
+DAEMON_PATH=${GOPATH}/bin/${DAEMON}
+NAME="music api server"
+PID_FILE=/var/run/${DAEMON}.pid
+
+# music-api-server cmdline options
+LOG_FILE=/var/log/${DAEMON}.log
+LISTEN_PORT=9099
+REDIS_ADDR=localhost:6379
+EXPIRY_TIME=7200 # 2 hours
+
+set -e
+
+start() {
+    echo "Starting ${NAME}..."
+    if [[ -f ${PID_FILE} ]]; then
+        echo "Failed to start ${NAME}: pid file ${PID_FILE} already exists."
+        exit 1
+    fi
+    start-stop-daemon -p ${PID_FILE} -m --background -S -x ${DAEMON_PATH} -- \
+        -log ${LOG_FILE} -expire ${EXPIRY_TIME} -port ${LISTEN_PORT} -redis ${REDIS_ADDR}
+    sleep 1
+    if [[ -f ${PID_FILE} && -f ${LOG_FILE} ]]; then
+        echo "Started ${NAME} successfully"
+    else
+        echo "Failed to start ${NAME}"
+    fi
+}
+
+stop() {
+    echo "Stopping ${NAME}..."
+    if [[ ! -f ${PID_FILE} ]]; then
+        echo "Failed to stop ${NAME}: pid file ${PID_FILE} not exists."
+        exit 1
+    fi
+    start-stop-daemon -K -p ${PID_FILE}
+    rm ${PID_FILE}
+}
+
+status () {
+    if [[ ! -f ${PID_FILE} ]]; then
+        echo "${NAME} is not running"
+    else
+        ps aux | grep -v grep | grep `cat ${PID_FILE}`
+    fi
+}
+
+case "${1}" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    status)
+        status
+        ;;
+    *)
+        echo "Usage: service ${0} {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
+

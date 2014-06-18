@@ -5,10 +5,32 @@
 * 虾米
 * 网易云音乐(计划中)
 
-## Require
+## 安装(debian/ubuntu)
 
-1. Redis server
-2. `go get github.com/garyburd/redigo/redis`
+首先检查`GOPATH`变量是否正确设置，如果未设置，参考[这里](http://blog.atime.me/note/golang-summary.html#3867e350ebb33a487c4ac5f7787e1c29)进行设置。
+
+    # install redis-server
+    sudo apt-get install redis-server
+
+    # install redis driver for golang
+    go get github.com/garyburd/redigo/redis
+
+    # install music api server
+    go get github.com/mawenbao/music-api-server
+
+    # install init script
+    sudo cp $GOPATH/src/github.com/mawenbao/music-api-server/tools/music-api-server-init-script /etc/init.d/music-api-server
+
+    # set your GOPATH in init script
+    sudo sed -i "s|/SET/YOUR/GOPATH/HERE|`echo $GOPATH`|" /etc/init.d/musi-api-server
+
+    sudo chmod +x /etc/init.d/music-api-server
+
+    # start music api server
+    sudo service music-api-server start
+
+    # (optional) let music api server start on boot
+    sudo update-rc.d music-api-server defaults
 
 ## API
 
@@ -48,5 +70,5 @@
 
 1. 更好的缓存策略
     1. 优化songlist的缓存请求
-2. 添加init脚本
+2. 实现网易云音乐的api
 
