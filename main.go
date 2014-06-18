@@ -18,9 +18,10 @@ import (
 var (
 	gFailStringInvalidReq = []byte(`{status: "failed", msg: "invalid request argument"}`)
 	// command line options
-	gFlagRedisAddr  = flag.String("redis", "localhost:6379", "address(host:port) of redis server")
-	gFlagListenPort = flag.Int("port", 9099, "port to listen on")
-	gFlagLogfile    = flag.String("log", "", "path of the log file")
+	gFlagRedisAddr       = flag.String("redis", "localhost:6379", "address(host:port) of redis server")
+	gFlagListenPort      = flag.Int("port", 9099, "port to listen on")
+	gFlagLogfile         = flag.String("log", "", "path of the log file")
+	gFlagCacheExpiration = flag.Int("expire", 7200, "expiration time(in seconds) of redis cache, default is two hour")
 	// available music service functions
 	gFuncMap = map[string]interface{}{
 		getLowerFuncName(GetXiamiSongList): GetXiamiSongList,
@@ -125,12 +126,7 @@ func createServMux() http.Handler {
 				sl := callFunc(myGetFunc, id)[0].Interface().(*SongList)
 				result = []byte(sl.ToString())
 				// update cache
-				expires := time.Duration(0)
-				if "collect" == provider {
-					// collect expires in 10 minutes
-					expires = 10 * time.Minute
-				}
-				SetCache(provider, reqType, id, expires, result)
+				SetCache(provider, reqType, id, time.Duration(*gFlagCacheExpiration)*time.Second, result)
 			}
 		}
 		if "" != callback {
