@@ -1,0 +1,7 @@
+/var/log/music-api-server.log {
+    rotate 10
+    size 2M
+    compress
+    missingok
+}
+

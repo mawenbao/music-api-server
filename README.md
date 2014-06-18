@@ -22,7 +22,7 @@
     sudo cp $GOPATH/src/github.com/mawenbao/music-api-server/tools/music-api-server-init-script /etc/init.d/music-api-server
 
     # set your GOPATH in init script
-    sudo sed -i "s|/SET/YOUR/GOPATH/HERE|`echo $GOPATH`|" /etc/init.d/musi-api-server
+    sudo sed -i "s|/SET/YOUR/GOPATH/HERE|`echo $GOPATH`|" /etc/init.d/music-api-server
 
     sudo chmod +x /etc/init.d/music-api-server
 
@@ -31,6 +31,9 @@
 
     # (optional) let music api server start on boot
     sudo update-rc.d music-api-server defaults
+
+    # (optional) install logrotate config
+    sudo cp $GOPATH/src/github.com/mawenbao/music-api-server/tools/logrotate-config /etc/logrotate.d/music-api-server
 
 ## API
 
