@@ -43,6 +43,7 @@ var (
 	}
 )
 
+// minimize cache key length
 func GenCacheKey(provider, reqType, id string) string {
 	if "" == id {
 		log.Printf("failed to generate cache key: id is empty")
@@ -67,6 +68,7 @@ func GetCache(provider, reqType, id string) []byte {
 		return nil
 	}
 
+	// get compressed value
 	redisConn := gRedisPool.Get()
 	defer redisConn.Close()
 	value, err := redisConn.Do("GET", key)
@@ -78,6 +80,7 @@ func GetCache(provider, reqType, id string) []byte {
 		return nil
 	}
 
+	// decompress value
 	buff := bytes.NewBuffer(value.([]byte))
 	gzipRdr, err := gzip.NewReader(buff)
 	if nil != err {
@@ -93,12 +96,13 @@ func GetCache(provider, reqType, id string) []byte {
 	return data
 }
 
-func SetCache(provider, reqType, id string, value []byte) bool {
+func SetCache(provider, reqType, id string, expires time.Duration, value []byte) bool {
 	key := GenCacheKey(provider, reqType, id)
 	if "" == key {
 		return false
 	}
 
+	// compress value
 	var buff bytes.Buffer
 	gzipWtr := gzip.NewWriter(&buff)
 	_, err := gzipWtr.Write(value)
@@ -112,9 +116,15 @@ func SetCache(provider, reqType, id string, value []byte) bool {
 		return false
 	}
 
+	// save compressed value in cache
 	redisConn := gRedisPool.Get()
 	defer redisConn.Close()
-	_, err = redisConn.Do("SET", key, buff.Bytes())
+	if expires != 0 {
+		_, err = redisConn.Do("SETEX", key, expires.Seconds(), buff.Bytes())
+	} else {
+		// no expiration if expires is 0
+		_, err = redisConn.Do("SET", key, buff.Bytes())
+	}
 	if nil != err {
 		log.Printf("failed to send value to redis server %s: %s", gFlagRedisAddr, err)
 		return false

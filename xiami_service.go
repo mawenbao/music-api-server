@@ -62,7 +62,7 @@ type XiamiAlbum struct {
 	Songs map[string]XiamiCollectSong
 }
 
-func GetXiamiSong(songId string) *Song {
+func getXiamiSong(songId string) *Song {
 	url := gXiamiAPIUrlBase + gXiamiSongUrl + strings.TrimSpace(songId)
 	ret := GetUrl(gXiamiClient, url)
 	if nil == ret {
@@ -91,7 +91,7 @@ func GetXiamiSong(songId string) *Song {
 func GetXiamiSongList(songs string) *SongList {
 	sl := &SongList{}
 	for _, sid := range strings.Split(songs, gXiamiSongSplitter) {
-		xiamiSong := GetXiamiSong(strings.TrimSpace(sid))
+		xiamiSong := getXiamiSong(strings.TrimSpace(sid))
 		if nil != xiamiSong {
 			sl.AddSong(xiamiSong)
 		}

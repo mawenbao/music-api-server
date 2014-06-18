@@ -7,17 +7,22 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var (
 	gFailStringInvalidReq = []byte(`{status: "failed", msg: "invalid request argument"}`)
-	gFlagRedisAddr        = flag.String("redis", "localhost:6379", "address(host:port) of redis server")
-	gListenPort           = flag.Int("port", 9099, "port to listen on")
-	gFuncMap              = map[string]interface{}{
+	// command line options
+	gFlagRedisAddr  = flag.String("redis", "localhost:6379", "address(host:port) of redis server")
+	gFlagListenPort = flag.Int("port", 9099, "port to listen on")
+	gFlagLogfile    = flag.String("log", "", "path of the log file")
+	// available music service functions
+	gFuncMap = map[string]interface{}{
 		getLowerFuncName(GetXiamiSongList): GetXiamiSongList,
 		getLowerFuncName(GetXiamiAlbum):    GetXiamiAlbum,
 		getLowerFuncName(GetXiamiCollect):  GetXiamiCollect,
@@ -111,17 +116,25 @@ func createServMux() http.Handler {
 		// get cache first
 		result := GetCache(provider, reqType, id)
 		if nil == result {
+			// cache missed
 			myGetFunc, ok := gFuncMap["get"+provider+reqType]
 			if !ok {
 				result = gFailStringInvalidReq
 			} else {
+				// fetch and parse music data
 				sl := callFunc(myGetFunc, id)[0].Interface().(*SongList)
 				result = []byte(sl.ToString())
 				// update cache
-				SetCache(provider, reqType, id, result)
+				expires := time.Duration(0)
+				if "collect" == provider {
+					// collect expires in 10 minutes
+					expires = 10 * time.Minute
+				}
+				SetCache(provider, reqType, id, expires, result)
 			}
 		}
 		if "" != callback {
+			// jsonp
 			result = []byte(callback + "(" + string(result) + ");")
 		}
 		w.Write(result)
@@ -133,13 +146,24 @@ func main() {
 	flag.Usage = showUsage
 	flag.Parse()
 
-	// start http server
-	serverAddr := ":" + strconv.Itoa(*gListenPort)
+	// init log
+	if "" != *gFlagLogfile {
+		logfile, err := os.OpenFile(*gFlagLogfile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if nil != err {
+			log.Fatalf("failed to open/create log file %s: %s", *gFlagLogfile, err)
+		}
+		defer logfile.Close()
+		log.SetOutput(logfile)
+	}
+
+	// init http server
+	serverAddr := ":" + strconv.Itoa(*gFlagListenPort)
 	httpServer := &http.Server{
 		Addr:    serverAddr,
 		Handler: createServMux(),
 	}
-
-	log.Printf("Listening at %s ...", serverAddr)
+	// start server
+	log.Printf("Start music api server ...")
+	fmt.Printf("Listening at %s ...\n", serverAddr)
 	log.Fatal(httpServer.ListenAndServe())
 }
