@@ -23,7 +23,7 @@ var (
 	gFlagLogfile         = flag.String("log", "", "path of the log file")
 	gFlagCacheExpiration = flag.Int("expire", 7200, "expiry time(in seconds) of redis cache, default is two hours")
 	// available music service functions
-	gFuncMap = map[string]interface{}{
+	gGetMusicFuncMap = map[string]interface{}{
 		getLowerFuncName(GetXiamiSongList): GetXiamiSongList,
 		getLowerFuncName(GetXiamiAlbum):    GetXiamiAlbum,
 		getLowerFuncName(GetXiamiCollect):  GetXiamiCollect,
@@ -102,8 +102,11 @@ func getLowerFuncName(i interface{}) string {
 	return strings.Split(funcName, ".")[1]
 }
 
-func callFunc(myFunc, param interface{}) []reflect.Value {
-	return reflect.ValueOf(myFunc).Call([]reflect.Value{reflect.ValueOf(param)})
+func callGetMusicFunc(myFunc, param interface{}) *SongList {
+	return reflect.ValueOf(myFunc).Call(
+		[]reflect.Value{
+			reflect.ValueOf(param),
+		})[0].Interface().(*SongList)
 }
 
 func createServMux() http.Handler {
@@ -118,13 +121,17 @@ func createServMux() http.Handler {
 		result := GetCache(provider, reqType, id)
 		if nil == result {
 			// cache missed
-			myGetFunc, ok := gFuncMap["get"+provider+reqType]
+			myGetMusicFunc, ok := gGetMusicFuncMap["get"+provider+reqType]
 			if !ok {
 				result = gFailStringInvalidReq
 			} else {
 				// fetch and parse music data
-				sl := callFunc(myGetFunc, id)[0].Interface().(*SongList)
-				result = []byte(sl.ToString())
+				sl := callGetMusicFunc(myGetMusicFunc, id)
+				if nil == sl {
+					result = gFailStringInvalidReq
+				} else {
+					result = []byte(sl.ToString())
+				}
 				// update cache
 				SetCache(provider, reqType, id, time.Duration(*gFlagCacheExpiration)*time.Second, result)
 			}
