@@ -127,7 +127,7 @@ func createServMux() http.Handler {
 			} else {
 				// fetch and parse music data
 				sl := callGetMusicFunc(myGetMusicFunc, id)
-				if nil == sl {
+				if nil == sl || 0 == len(sl.Songs) {
 					result = gFailStringInvalidReq
 				} else {
 					result = []byte(sl.ToString())
