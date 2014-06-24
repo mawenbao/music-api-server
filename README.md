@@ -73,11 +73,11 @@
         "msg":    "如果status为failed，这里会保存错误信息，否则不返回该字段",
         "songs": [
             {
-                "song_title":    "歌曲名称",
-                "song_src":      "歌曲播放地址",
-                "song_lrc":      "歌词文件地址",
-                "song_artists":  "演唱者",
-                "song_provider": "音乐提供商"
+                "name":     "歌曲名称",
+                "url":      "歌曲播放地址",
+                "artists":  "演唱者",
+                "provider": "音乐提供商"
+                "lrc_url":  "歌词文件地址(可能没有)",
             }
         ]
     } 

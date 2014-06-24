@@ -34,11 +34,11 @@ var (
 )
 
 type Song struct {
-	Name     string `json:"song_title"`
-	Url      string `json:"song_src"`
-	LrcUrl   string `json:"song_lrc"`
-	Artists  string `json:"song_artists"`
-	Provider string `json:"song_provider"`
+	Name     string `json:"name"`
+	Url      string `json:"url"`
+	LrcUrl   string `json:"lrc_url"`
+	Artists  string `json:"artists"`
+	Provider string `json:"provider"`
 }
 
 func (s *Song) String() string {
