@@ -25,7 +25,7 @@
     go get github.com/mawenbao/music-api-server
 
     # install init script
-    sudo cp $GOPATH/src/github.com/mawenbao/music-api-server/tools/music-api-server-init-script /etc/init.d/music-api-server
+    sudo cp $GOPATH/src/github.com/mawenbao/music-api-server/tools/init-script /etc/init.d/music-api-server
 
     # set your GOPATH in init script
     sudo sed -i "s|/SET/YOUR/GOPATH/HERE|`echo $GOPATH`|" /etc/init.d/music-api-server
