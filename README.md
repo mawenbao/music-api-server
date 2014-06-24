@@ -1,9 +1,15 @@
 # music api server
 
-音乐服务的api通用接口，目前已支持的音乐服务只有虾米:
+音乐服务的api通用接口，目前已支持的音乐服务:
 
 * 虾米
-* 网易云音乐(计划中)
+    * 专辑
+    * 歌曲列表
+    * 精选集
+* 网易云音乐
+    * 专辑
+    * 歌曲列表
+    * 歌单
 
 ## 安装(debian/ubuntu)
 
@@ -35,7 +41,15 @@
     # (optional) install logrotate config
     sudo cp $GOPATH/src/github.com/mawenbao/music-api-server/tools/logrotate-config /etc/logrotate.d/music-api-server
 
+## 更新(debian/ubuntu)
+
+    go get -u github.com/mawenbao/music-api-server
+    sudo service music-api-server restart
+
 ## API
+### Demo
+
+[http://app.atime.me/music-api-server/?p=xiami&t=songlist&i=20526,1772292423&c=abc123](http://app.atime.me/music-api-server/?p=xiami&t=songlist&i=20526,1772292423&c=abc123)
 
 ### 请求
 
@@ -45,33 +59,35 @@
 * `p=xiami`: 音乐API提供商，目前仅支持虾米(xiami):
     * 虾米(xiami)
 * `t=songlist`: 音乐类型
-    * songlist(xiami): 虾米的歌曲列表，对应的id是半角逗号分隔的多个歌曲id
+    * songlist(xiami + netease): 歌曲列表，对应的id是半角逗号分隔的多个歌曲id
+    * album(xiami + netease): 音乐专辑，对应的id为专辑id
     * collect(xiami): 虾米的精选集，对应的id为精选集id
-    * album(xiami): 虾米的专辑，对应的id为专辑id
-* `i=20526,1772292423`: 歌曲/专辑/精选集的id，歌曲列表类型可用半角逗号分割多个歌曲id
+    * playlist(netease): 网易云音乐的歌单，对应的id为歌单(playlist)id
+* `i=20526,1772292423`: 歌曲/专辑/精选集/歌单的id，歌曲列表类型可用半角逗号分割多个歌曲id
 * `c=abc123`: 使用jsonp方式返回数据，实际返回为`abc123({songs: ...});`
 
 ### 返回
 
     {
         "status": "返回状态，ok为正常，failed表示出错并设置msg",
-        "msg": "如果status为failed，这里会保存错误信息，否则不返回该字段",
+        "msg":    "如果status为failed，这里会保存错误信息，否则不返回该字段",
         "songs": [
             {
-                "song_title": "歌曲名称",
-                "song_src": "歌曲播放地址",
-                "song_lrc": "歌词文件地址",
-                "song_author": "演唱者",
+                "song_title":    "歌曲名称",
+                "song_src":      "歌曲播放地址",
+                "song_lrc":      "歌词文件地址",
+                "song_artists":  "演唱者",
                 "song_provider": "音乐提供商"
             }
         ]
-    }   
+    } 
 
 如果有`c=abc123`请求参数，则实际以[jsonp](http://en.wikipedia.org/wiki/JSONP)方式返回数据。
 
 ## TODO
-
 1. 更好的缓存策略
-    1. 优化songlist的缓存请求
-2. 实现网易云音乐的api
+
+## Thanks
+* [Wordpress Hermit Player](http://mufeng.me/hermit-for-wordpress.html)
+* [网易云音乐API分析](https://github.com/yanunon/NeteaseCloudMusic/wiki/%E7%BD%91%E6%98%93%E4%BA%91%E9%9F%B3%E4%B9%90API%E5%88%86%E6%9E%90)
 

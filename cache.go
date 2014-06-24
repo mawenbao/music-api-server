@@ -16,9 +16,10 @@ var (
 	}
 
 	gReqTypeMap = map[string]string{
-		"album":    "a",
-		"collect":  "c",
-		"songlist": "l",
+		"album":    "a", // xiami + netease
+		"songlist": "l", // xiami + netease
+		"collect":  "c", // xiami
+		"playlist": "p", // netease
 	}
 
 	gRedisPool = &redis.Pool{

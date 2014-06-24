@@ -22,22 +22,25 @@ var (
 	gXiamiClient = &http.Client{}
 )
 
+type XiamiRetStatus struct {
+	Status  string `json:"status"`
+	Message string `json:"msg"`
+}
+
 type XiamiSongRet struct {
-	Status  string    `json:"status"`
-	Message string    `json:"msg"`
-	Song    XiamiSong `json:"song"`
+	XiamiRetStatus
+	Song XiamiSong `json:"song"`
 }
 
 type XiamiSong struct {
 	Name   string `json:"song_name"`
 	Url    string `json:"song_location"`
 	Lrc    string `json:"song_lrc"`
-	Author string `json:"artist_name"`
+	Artist string `json:"artist_name"`
 }
 
 type XiamiCollectRet struct {
-	Status  string       `json:"status"`
-	Message string       `json:"msg"`
+	XiamiRetStatus
 	Collect XiamiCollect `json:"collect"`
 }
 
@@ -49,13 +52,12 @@ type XiamiCollectSong struct {
 	Name   string `json:"name"`
 	Url    string `json:"location"`
 	Lrc    string `json:"lyric"`
-	Author string `json:"singers"`
+	Artist string `json:"singers"`
 }
 
 type XiamiAlbumRet struct {
-	Status  string     `json:"status"`
-	Message string     `json:"msg"`
-	Album   XiamiAlbum `json:"album"`
+	XiamiRetStatus
+	Album XiamiAlbum `json:"album"`
 }
 
 type XiamiAlbum struct {
@@ -82,7 +84,7 @@ func getXiamiSong(songId string) *Song {
 	return &Song{
 		Name:     songret.Song.Name,
 		Url:      songret.Song.Url,
-		Author:   songret.Song.Author,
+		Artists:  songret.Song.Artist,
 		LrcUrl:   songret.Song.Lrc,
 		Provider: gXiamiProvider,
 	}
@@ -116,12 +118,13 @@ func GetXiamiCollect(collectId string) *SongList {
 		return nil
 	}
 	sl := &SongList{}
-	for _, song := range collectRet.Collect.Songs {
+	for i, _ := range collectRet.Collect.Songs {
+		song := &collectRet.Collect.Songs[i]
 		sl.AddSong(&Song{
 			Name:     song.Name,
 			Url:      song.Url,
 			LrcUrl:   song.Lrc,
-			Author:   song.Author,
+			Artists:  song.Artist,
 			Provider: gXiamiProvider,
 		})
 	}
@@ -145,12 +148,13 @@ func GetXiamiAlbum(albumId string) *SongList {
 		return nil
 	}
 	sl := &SongList{}
-	for _, song := range albumRet.Album.Songs {
+	for k, _ := range albumRet.Album.Songs {
+		song := albumRet.Album.Songs[k]
 		sl.AddSong(&Song{
 			Name:     song.Name,
 			Url:      song.Url,
 			LrcUrl:   song.Lrc,
-			Author:   song.Author,
+			Artists:  song.Artist,
 			Provider: gXiamiProvider,
 		})
 	}

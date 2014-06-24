@@ -21,12 +21,15 @@ var (
 	gFlagRedisAddr       = flag.String("redis", "localhost:6379", "address(host:port) of redis server")
 	gFlagListenPort      = flag.Int("port", 9099, "port to listen on")
 	gFlagLogfile         = flag.String("log", "", "path of the log file")
-	gFlagCacheExpiration = flag.Int("expire", 7200, "expiry time(in seconds) of redis cache, default is two hours")
+	gFlagCacheExpiration = flag.Int("expire", 3600, "expiry time(in seconds) of redis cache, default is one hour")
 	// available music service functions
 	gGetMusicFuncMap = map[string]interface{}{
-		getLowerFuncName(GetXiamiSongList): GetXiamiSongList,
-		getLowerFuncName(GetXiamiAlbum):    GetXiamiAlbum,
-		getLowerFuncName(GetXiamiCollect):  GetXiamiCollect,
+		getLowerFuncName(GetXiamiSongList):   GetXiamiSongList,
+		getLowerFuncName(GetXiamiAlbum):      GetXiamiAlbum,
+		getLowerFuncName(GetXiamiCollect):    GetXiamiCollect,
+		getLowerFuncName(GetNeteaseSongList): GetNeteaseSongList,
+		getLowerFuncName(GetNeteaseAlbum):    GetNeteaseAlbum,
+		getLowerFuncName(GetNeteasePlayList): GetNeteasePlayList,
 	}
 )
 
@@ -34,11 +37,11 @@ type Song struct {
 	Name     string `json:"song_title"`
 	Url      string `json:"song_src"`
 	LrcUrl   string `json:"song_lrc"`
-	Author   string `json:"song_author"`
+	Artists  string `json:"song_artists"`
 	Provider string `json:"song_provider"`
 }
 
-func (s *Song) ToString() string {
+func (s *Song) String() string {
 	jsonStr, err := json.Marshal(s)
 	if err != nil {
 		log.Printf("error generating song json string: %s", err)
@@ -67,7 +70,7 @@ func (sl *SongList) Concat(ol *SongList) *SongList {
 	return sl
 }
 
-func (sl *SongList) ToString() string {
+func (sl *SongList) String() string {
 	jsonStr, err := json.Marshal(sl)
 	if err != nil {
 		log.Printf("error generating json string: %s", err)
@@ -130,7 +133,7 @@ func createServMux() http.Handler {
 				if nil == sl || 0 == len(sl.Songs) {
 					result = gFailStringInvalidReq
 				} else {
-					result = []byte(sl.ToString())
+					result = []byte(sl.String())
 				}
 				// update cache
 				SetCache(provider, reqType, id, time.Duration(*gFlagCacheExpiration)*time.Second, result)
