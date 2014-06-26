@@ -56,8 +56,9 @@
     GET http://localhost:9099/?p=xiami&t=songlist&i=20526,1772292423&c=abc123
 
 * `localhost:9099`: 默认监听地址
-* `p=xiami`: 音乐API提供商，目前仅支持虾米(xiami):
+* `p=xiami`: 音乐API提供商，目前支持:
     * 虾米(xiami)
+    * 网易云音乐(netease)
 * `t=songlist`: 音乐类型
     * songlist(xiami + netease): 歌曲列表，对应的id是半角逗号分隔的多个歌曲id
     * album(xiami + netease): 音乐专辑，对应的id为专辑id
