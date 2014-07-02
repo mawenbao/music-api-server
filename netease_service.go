@@ -33,9 +33,11 @@ func init() {
 	if nil != err {
 		log.Fatal("failed to parse netease api url %s: %s", gNeteaseAPIUrlBase, err)
 	}
-	// netease api request requires an appver cookie
+	// netease api requires some cookies to work
 	cookies.SetCookies(apiUrl, []*http.Cookie{
-		&http.Cookie{Name: "appver", Value: "1.5.2"},
+		&http.Cookie{Name: "appver", Value: "1.4.1.62460"},
+		&http.Cookie{Name: "os", Value: "pc"},
+		&http.Cookie{Name: "osver", Value: "Microsoft-Windows-7-Ultimate-Edition-build-7600-64bit"},
 	})
 	gNeteaseClient.Jar = cookies
 }
