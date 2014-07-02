@@ -43,8 +43,13 @@
 
 ## 更新(debian/ubuntu)
 
+    # update and restart music-api-server
     go get -u github.com/mawenbao/music-api-server
     sudo service music-api-server restart
+
+    # flush redis cache
+    redis-cli
+    > flushall
 
 ## API
 ### Demo
