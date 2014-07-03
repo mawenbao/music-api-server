@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+const (
+	gCacheKeyPrefix = "mas:"
+)
+
 var (
 	gProviderMap = map[string]string{
 		"xiami":   "x",
@@ -59,7 +63,7 @@ func GenCacheKey(provider, reqType, id string) string {
 		log.Printf("failed to generate cache key: request type %s not supported.", reqType)
 		return ""
 	}
-	return provider + "|" + reqType + id
+	return gCacheKeyPrefix + provider + "|" + reqType + id
 }
 
 func GetCache(provider, reqType, id string) []byte {
