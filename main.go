@@ -23,15 +23,23 @@ var (
 	gFlagLogfile         = flag.String("log", "", "path of the log file")
 	gFlagCacheExpiration = flag.Int("expire", 3600, "expiry time(in seconds) of redis cache, default is one hour")
 	// available music service functions
-	gGetMusicFuncMap = map[string]interface{}{
-		getLowerFuncName(GetXiamiSongList):   GetXiamiSongList,
-		getLowerFuncName(GetXiamiAlbum):      GetXiamiAlbum,
-		getLowerFuncName(GetXiamiCollect):    GetXiamiCollect,
-		getLowerFuncName(GetNeteaseSongList): GetNeteaseSongList,
-		getLowerFuncName(GetNeteaseAlbum):    GetNeteaseAlbum,
-		getLowerFuncName(GetNeteasePlayList): GetNeteasePlayList,
+	gAvailableGetMusicFuncs = []interface{}{
+		GetXiamiSongList,
+		GetXiamiAlbum,
+		GetXiamiCollect,
+		GetNeteaseSongList,
+		GetNeteaseAlbum,
+		GetNeteasePlayList,
 	}
+	gGetMusicFuncMap = make(map[string]interface{})
 )
+
+func init() {
+	// init getmusic function map
+	for _, f := range gAvailableGetMusicFuncs {
+		gGetMusicFuncMap[getLowerFuncName(f)] = f
+	}
+}
 
 type Song struct {
 	Name     string `json:"name"`
