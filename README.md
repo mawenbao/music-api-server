@@ -48,8 +48,7 @@
     sudo service music-api-server restart
 
     # flush redis cache
-    redis-cli
-    > flushall
+    redis-cli FLUSHDB
 
 ## API
 ### Demo
