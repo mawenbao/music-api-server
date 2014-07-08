@@ -75,7 +75,7 @@
 
     {
         "status": "返回状态，ok为正常，failed表示出错并设置msg",
-        "msg":    "如果status为failed，这里会保存错误信息，否则不返回该字段",
+        "msg":    "如果status为failed，这里会保存错误信息",
         "songs": [
             {
                 "name":     "歌曲名称",

@@ -91,22 +91,20 @@ type NeteaseArtist struct {
 func GetNeteaseAlbum(albumId string) *SongList {
 	url := gNeteaseAPIUrlBase + gNeteaseAlbumUrl + albumId
 	ret := GetUrl(gNeteaseClient, url)
+	sl := NewSongList()
 	if nil == ret {
-		return nil
+		return sl.SetAndLogErrorf("error accessing url %s", url)
 	}
 
 	var albumRet NeteaseAlbumRet
 	err := json.Unmarshal(ret, &albumRet)
 	if nil != err {
-		log.Printf("error parsing album return data from url %s: %s", url, err)
-		return nil
+		return sl.SetAndLogErrorf("error parsing album return data from url %s: %s", url, err)
 	}
 	if gNeteaseRetOk != albumRet.StatusCode {
-		log.Printf("error getting url %s: %s", url, albumRet.Message)
-		return nil
+		return sl.SetAndLogErrorf("error getting url %s: %s", url, albumRet.Message)
 	}
 
-	sl := &SongList{}
 	for i, _ := range albumRet.Album.Songs {
 		song := &albumRet.Album.Songs[i]
 		sl.AddSong(&Song{
@@ -122,22 +120,20 @@ func GetNeteaseAlbum(albumId string) *SongList {
 func GetNeteaseSongList(songs string) *SongList {
 	url := fmt.Sprintf(gNeteaseAPIUrlBase+gNeteaseSongListUrl, songs)
 	ret := GetUrl(gNeteaseClient, url)
+	sl := NewSongList()
 	if nil == ret {
-		return nil
+		return sl.SetAndLogErrorf("error accessing url %s", url)
 	}
 
 	var songlistRet NeteaseSongListRet
 	err := json.Unmarshal(ret, &songlistRet)
 	if nil != err {
-		log.Printf("error parsing songlist return data from url %s: %s", url, err)
-		return nil
+		return sl.SetAndLogErrorf("error parsing songlist return data from url %s: %s", url, err)
 	}
 	if gNeteaseRetOk != songlistRet.StatusCode {
-		log.Printf("error getting url %s: %s", url, songlistRet.Message)
-		return nil
+		return sl.SetAndLogErrorf("error getting url %s: %s", url, songlistRet.Message)
 	}
 
-	sl := &SongList{}
 	for i, _ := range songlistRet.Songs {
 		song := &songlistRet.Songs[i]
 		sl.AddSong(&Song{
@@ -153,22 +149,20 @@ func GetNeteaseSongList(songs string) *SongList {
 func GetNeteasePlayList(listId string) *SongList {
 	url := gNeteaseAPIUrlBase + gNeteasePlayListUrl + listId
 	ret := GetUrl(gNeteaseClient, url)
+	sl := NewSongList()
 	if nil == ret {
-		return nil
+		return sl.SetAndLogErrorf("error accessing url %s", url)
 	}
 
 	var playlistRet NeteasePlayListRet
 	err := json.Unmarshal(ret, &playlistRet)
 	if nil != err {
-		log.Printf("error parsing playlist return data from url %s: %s", url, err)
-		return nil
+		return sl.SetAndLogErrorf("error parsing playlist return data from url %s: %s", url, err)
 	}
 	if gNeteaseRetOk != playlistRet.StatusCode {
-		log.Printf("error getting url %s: %s", url, playlistRet.Message)
-		return nil
+		return sl.SetAndLogErrorf("error getting url %s: %s", url, playlistRet.Message)
 	}
 
-	sl := &SongList{}
 	for i, _ := range playlistRet.Result.Songs {
 		song := &playlistRet.Result.Songs[i]
 		sl.AddSong(&Song{

@@ -21,7 +21,7 @@ var (
 	gFlagRedisAddr       = flag.String("redis", "localhost:6379", "address(host:port) of redis server")
 	gFlagListenPort      = flag.Int("port", 9099, "port to listen on")
 	gFlagLogfile         = flag.String("log", "", "path of the log file")
-	gFlagCacheExpiration = flag.Int("expire", 3600, "expiry time(in seconds) of redis cache, default is one hour")
+	gFlagCacheExpiration = flag.Int("expire", 3600, "expiry time(in seconds) of redis cache, default is one hour, 0 means no expiration")
 	// available music service functions
 	gAvailableGetMusicFuncs = []interface{}{
 		GetXiamiSongList,
@@ -49,7 +49,7 @@ type Song struct {
 	Provider string `json:"provider"`
 }
 
-func (s *Song) String() string {
+func (s *Song) ToJsonString() string {
 	jsonStr, err := json.Marshal(s)
 	if err != nil {
 		log.Printf("error generating song json string: %s", err)
@@ -59,7 +59,38 @@ func (s *Song) String() string {
 }
 
 type SongList struct {
-	Songs []Song `json:"songs"`
+	Status string `json:"status"`
+	ErrMsg string `json:"msg"`
+	Songs  []Song `json:"songs"`
+}
+
+func NewSongList() *SongList {
+	return &SongList{
+		Status: "ok",
+		ErrMsg: "",
+		Songs:  []Song{},
+	}
+}
+
+func (sl *SongList) SetAndLogErrorf(format string, args ...interface{}) *SongList {
+	sl.Status = "failed"
+	sl.ErrMsg = fmt.Sprintf(format, args...)
+	log.Printf(sl.ErrMsg)
+	return sl
+}
+
+func (sl *SongList) IsFailed() bool {
+	if "failed" == sl.Status || "" != sl.ErrMsg {
+		return true
+	}
+	return false
+}
+
+func (sl *SongList) CheckStatus() *SongList {
+	if "" == sl.Status && "" == sl.ErrMsg && 0 != len(sl.Songs) {
+		sl.Status = "ok"
+	}
+	return sl
 }
 
 func (sl *SongList) AddSong(s *Song) *SongList {
@@ -71,14 +102,14 @@ func (sl *SongList) Concat(ol *SongList) *SongList {
 	if ol == nil || ol.Songs == nil {
 		return sl
 	}
-	if sl.Songs == nil {
+	if ol.IsFailed() || nil == sl.Songs {
 		return ol
 	}
 	sl.Songs = append(sl.Songs, ol.Songs...)
 	return sl
 }
 
-func (sl *SongList) String() string {
+func (sl *SongList) ToJsonString() string {
 	jsonStr, err := json.Marshal(sl)
 	if err != nil {
 		log.Printf("error generating json string: %s", err)
@@ -137,12 +168,7 @@ func createServMux() http.Handler {
 				result = gFailStringInvalidReq
 			} else {
 				// fetch and parse music data
-				sl := callGetMusicFunc(myGetMusicFunc, id)
-				if nil == sl || 0 == len(sl.Songs) {
-					result = gFailStringInvalidReq
-				} else {
-					result = []byte(sl.String())
-				}
+				result = []byte(callGetMusicFunc(myGetMusicFunc, id).CheckStatus().ToJsonString())
 				// update cache
 				SetCache(provider, reqType, id, time.Duration(*gFlagCacheExpiration)*time.Second, result)
 			}
@@ -178,6 +204,6 @@ func main() {
 	}
 	// start server
 	log.Printf("Start music api server ...")
-	fmt.Printf("Listening at %s ...\n", serverAddr)
+	log.Printf("Listening at %s ...\n", serverAddr)
 	log.Fatal(httpServer.ListenAndServe())
 }
