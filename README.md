@@ -89,9 +89,6 @@
 
 如果有`c=abc123`请求参数，则实际以[jsonp](http://en.wikipedia.org/wiki/JSONP)方式返回数据。
 
-## TODO
-1. 更好的缓存策略
-
 ## Thanks
 * [Wordpress Hermit Player](http://mufeng.me/hermit-for-wordpress.html)
 * [网易云音乐API分析](https://github.com/yanunon/NeteaseCloudMusic/wiki/%E7%BD%91%E6%98%93%E4%BA%91%E9%9F%B3%E4%B9%90API%E5%88%86%E6%9E%90)

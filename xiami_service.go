@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const (
@@ -64,11 +65,15 @@ type XiamiAlbum struct {
 }
 
 func GetXiamiSong(songId string) *SongList {
-	url := gXiamiAPIUrlBase + gXiamiSongUrl + strings.TrimSpace(songId)
-	ret := GetUrl(gXiamiClient, url)
 	sl := NewSongList()
+	ret := GetCache(gXiamiProvider, gReqTypeSongList, songId)
+	url := gXiamiAPIUrlBase + gXiamiSongUrl + strings.TrimSpace(songId)
 	if nil == ret {
-		return sl.SetAndLogErrorf("error accessing url %s", url)
+		ret = GetUrl(gXiamiClient, url)
+		if nil == ret {
+			return sl.SetAndLogErrorf("error accessing url %s", url)
+		}
+		SetCache(gXiamiProvider, gReqTypeSong, songId, time.Duration(*gFlagCacheExpiration)*time.Second, ret)
 	}
 
 	var songret XiamiSongRet

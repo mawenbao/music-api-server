@@ -16,7 +16,6 @@ import (
 )
 
 var (
-	gFailStringInvalidReq = []byte(`{status: "failed", msg: "invalid request argument"}`)
 	// command line options
 	gFlagRedisAddr       = flag.String("redis", "localhost:6379", "address(host:port) of redis server")
 	gFlagListenPort      = flag.Int("port", 9099, "port to listen on")
@@ -84,13 +83,6 @@ func (sl *SongList) IsFailed() bool {
 		return true
 	}
 	return false
-}
-
-func (sl *SongList) CheckStatus() *SongList {
-	if "" == sl.Status && "" == sl.ErrMsg && 0 != len(sl.Songs) {
-		sl.Status = "ok"
-	}
-	return sl
 }
 
 func (sl *SongList) AddSong(s *Song) *SongList {
@@ -165,10 +157,10 @@ func createServMux() http.Handler {
 			// cache missed
 			myGetMusicFunc, ok := gGetMusicFuncMap["get"+provider+reqType]
 			if !ok {
-				result = gFailStringInvalidReq
+				result = []byte(NewSongList().SetAndLogErrorf("invalid request arguments").ToJsonString())
 			} else {
 				// fetch and parse music data
-				result = []byte(callGetMusicFunc(myGetMusicFunc, id).CheckStatus().ToJsonString())
+				result = []byte(callGetMusicFunc(myGetMusicFunc, id).ToJsonString())
 				// update cache
 				SetCache(provider, reqType, id, time.Duration(*gFlagCacheExpiration)*time.Second, result)
 			}

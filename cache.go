@@ -10,7 +10,12 @@ import (
 )
 
 const (
-	gCacheKeyPrefix = "mas:"
+	gCacheKeyPrefix  = "mas:"
+	gReqTypeAlbum    = "album"
+	gReqTypeSongList = "songlist"
+	gReqTypePlayList = "playlist"
+	gReqTypeCollect  = "collet"
+	gReqTypeSong     = "song"
 )
 
 var (
@@ -20,10 +25,11 @@ var (
 	}
 
 	gReqTypeMap = map[string]string{
-		"album":    "a", // xiami + netease
-		"songlist": "l", // xiami + netease
-		"collect":  "c", // xiami
-		"playlist": "p", // netease
+		gReqTypeAlbum:    "a", // xiami + netease
+		gReqTypeSongList: "l", // xiami + netease
+		gReqTypePlayList: "p", // netease
+		gReqTypeCollect:  "c", // xiami
+		gReqTypeSong:     "s", // xiami
 	}
 
 	gRedisPool = &redis.Pool{
