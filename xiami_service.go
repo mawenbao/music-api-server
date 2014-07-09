@@ -66,7 +66,7 @@ type XiamiAlbum struct {
 
 func GetXiamiSong(songId string) *SongList {
 	sl := NewSongList()
-	ret := GetCache(gXiamiProvider, gReqTypeSongList, songId)
+	ret := GetCache(gXiamiProvider, gReqTypeSong, songId)
 	url := gXiamiAPIUrlBase + gXiamiSongUrl + strings.TrimSpace(songId)
 	if nil == ret {
 		ret = GetUrl(gXiamiClient, url)
