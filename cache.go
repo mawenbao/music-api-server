@@ -14,7 +14,7 @@ const (
 	gReqTypeAlbum    = "album"
 	gReqTypeSongList = "songlist"
 	gReqTypePlayList = "playlist"
-	gReqTypeCollect  = "collet"
+	gReqTypeCollect  = "collect"
 	gReqTypeSong     = "song"
 )
 
@@ -64,12 +64,12 @@ func GenCacheKey(provider, reqType, id string) string {
 		log.Printf("failed to generate cache key: provider %s not supported.", provider)
 		return ""
 	}
-	reqType, ok = gReqTypeMap[reqType]
+	typeAbbrev, ok := gReqTypeMap[reqType]
 	if !ok {
 		log.Printf("failed to generate cache key: request type %s not supported.", reqType)
 		return ""
 	}
-	return gCacheKeyPrefix + provider + "|" + reqType + id
+	return gCacheKeyPrefix + provider + "|" + typeAbbrev + id
 }
 
 func GetCache(provider, reqType, id string) []byte {
