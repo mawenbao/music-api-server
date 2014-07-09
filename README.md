@@ -57,7 +57,7 @@
 
 ### 请求
 
-    GET http://localhost:9099/?p=xiami&t=songlist&i=20526,1772292423&c=abc123
+    GET http://localhost:9099/?p=xiami&t=songlist&i=20526,1772292423&c=abc123&q=high
 
 * `localhost:9099`: 默认监听地址
 * `p=xiami`: 音乐API提供商，目前支持:
@@ -70,6 +70,10 @@
     * playlist(netease): 网易云音乐的歌单，对应的id为歌单(playlist)id
 * `i=20526,1772292423`: 歌曲/专辑/精选集/歌单的id，歌曲列表类型可用半角逗号分割多个歌曲id
 * `c=abc123`: 使用jsonp方式返回数据，实际返回为`abc123({songs: ...});`
+* `q=high`: 音乐品质，high表示优先返回高比特率的音乐链接，**该参数目前仅对网易云音乐有效**。
+    * high: 高品音质
+    * medium: 普通音质
+    * low: 低品音质
 
 ### 返回
 

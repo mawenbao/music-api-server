@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
 )
 
 const (
@@ -64,16 +63,12 @@ type XiamiAlbum struct {
 	Songs map[string]XiamiCollectSong
 }
 
-func GetXiamiSong(songId string) *SongList {
+func getXiamiSong(songID string) *SongList {
 	sl := NewSongList()
-	ret := GetCache(gXiamiProvider, gReqTypeSong, songId)
-	url := gXiamiAPIUrlBase + gXiamiSongUrl + strings.TrimSpace(songId)
+	url := gXiamiAPIUrlBase + gXiamiSongUrl + strings.TrimSpace(songID)
+	ret := GetUrl(gXiamiClient, url)
 	if nil == ret {
-		ret = GetUrl(gXiamiClient, url)
-		if nil == ret {
-			return sl.SetAndLogErrorf("error accessing url %s", url)
-		}
-		SetCache(gXiamiProvider, gReqTypeSong, songId, time.Duration(*gFlagCacheExpiration)*time.Second, ret)
+		return sl.SetAndLogErrorf("error accessing url %s", url)
 	}
 
 	var songret XiamiSongRet
@@ -86,7 +81,7 @@ func GetXiamiSong(songId string) *SongList {
 	}
 	emptyXiamiSong := XiamiSong{}
 	if emptyXiamiSong == songret.Song {
-		return sl.SetAndLogErrorf("invalid song id %s", songId)
+		return sl.SetAndLogErrorf("invalid song id %s", songID)
 	}
 	return sl.AddSong(&Song{
 		Name:     songret.Song.Name,
@@ -97,10 +92,10 @@ func GetXiamiSong(songId string) *SongList {
 	})
 }
 
-func GetXiamiSongList(songs string) *SongList {
+func GetXiamiSongList(params *ReqParams) *SongList {
 	sl := NewSongList()
-	for _, sid := range strings.Split(songs, gXiamiSongSplitter) {
-		singleSL := GetXiamiSong(strings.TrimSpace(sid))
+	for _, sid := range strings.Split(params.ID, gXiamiSongSplitter) {
+		singleSL := getXiamiSong(strings.TrimSpace(sid))
 		if singleSL.IsFailed() {
 			return singleSL
 		}
@@ -109,8 +104,8 @@ func GetXiamiSongList(songs string) *SongList {
 	return sl
 }
 
-func GetXiamiCollect(collectId string) *SongList {
-	url := gXiamiAPIUrlBase + gXiamiCollectUrl + strings.TrimSpace(collectId)
+func GetXiamiCollect(params *ReqParams) *SongList {
+	url := gXiamiAPIUrlBase + gXiamiCollectUrl + strings.TrimSpace(params.ID)
 	ret := GetUrl(gXiamiClient, url)
 	sl := NewSongList()
 	if nil == ret {
@@ -137,8 +132,8 @@ func GetXiamiCollect(collectId string) *SongList {
 	return sl
 }
 
-func GetXiamiAlbum(albumId string) *SongList {
-	url := gXiamiAPIUrlBase + gXiamiAlbumUrl + strings.TrimSpace(albumId)
+func GetXiamiAlbum(params *ReqParams) *SongList {
+	url := gXiamiAPIUrlBase + gXiamiAlbumUrl + strings.TrimSpace(params.ID)
 	ret := GetUrl(gXiamiClient, url)
 	sl := NewSongList()
 	if nil == ret {

@@ -6,31 +6,25 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"io/ioutil"
 	"log"
+	"strings"
 	"time"
 )
 
 const (
-	gCacheKeyPrefix  = "mas:"
-	gReqTypeAlbum    = "album"
-	gReqTypeSongList = "songlist"
-	gReqTypePlayList = "playlist"
-	gReqTypeCollect  = "collect"
-	gReqTypeSong     = "song"
+	gCacheKeyPrefix    = "mas:"
+	gUrlCacheKeyPrefix = "url:"
 )
 
 var (
-	gProviderMap = map[string]string{
-		"xiami":   "x",
-		"netease": "n",
-	}
-
-	gReqTypeMap = map[string]string{
-		gReqTypeAlbum:    "a", // xiami + netease
-		gReqTypeSongList: "l", // xiami + netease
-		gReqTypePlayList: "p", // netease
-		gReqTypeCollect:  "c", // xiami
-		gReqTypeSong:     "s", // xiami
-	}
+	// minimize cache key length
+	gUrlKeyReplacer = strings.NewReplacer(
+		"http://", "",
+		"www.xiami.com", "xiami",
+		"/app/android", "",
+		"/app/iphone", "",
+		"music.163.com", "163",
+		"/api", "",
+	)
 
 	gRedisPool = &redis.Pool{
 		MaxIdle:     3,
@@ -53,32 +47,20 @@ var (
 	}
 )
 
-// minimize cache key length
-func GenCacheKey(provider, reqType, id string) string {
-	if "" == id {
-		log.Printf("failed to generate cache key: id is empty")
+func GenUrlCacheKey(url string) string {
+	if "" == url {
+		log.Println("failed to generate url cache key: url is empty")
 		return ""
 	}
-	provider, ok := gProviderMap[provider]
-	if !ok {
-		log.Printf("failed to generate cache key: provider %s not supported.", provider)
-		return ""
-	}
-	typeAbbrev, ok := gReqTypeMap[reqType]
-	if !ok {
-		log.Printf("failed to generate cache key: request type %s not supported.", reqType)
-		return ""
-	}
-	return gCacheKeyPrefix + provider + "|" + typeAbbrev + id
+	return gCacheKeyPrefix + gUrlCacheKeyPrefix + gUrlKeyReplacer.Replace(url)
 }
 
-func GetCache(provider, reqType, id string) []byte {
-	key := GenCacheKey(provider, reqType, id)
+func GetCache(key string, decompress bool) []byte {
 	if "" == key {
 		return nil
 	}
 
-	// get compressed value
+	// get from redis cache
 	redisConn := gRedisPool.Get()
 	defer redisConn.Close()
 	value, err := redisConn.Do("GET", key)
@@ -90,50 +72,57 @@ func GetCache(provider, reqType, id string) []byte {
 		return nil
 	}
 
+	valueBytes := value.([]byte)
+	if !decompress {
+		return valueBytes
+	}
 	// decompress value
-	buff := bytes.NewBuffer(value.([]byte))
+	buff := bytes.NewBuffer(valueBytes)
 	gzipRdr, err := gzip.NewReader(buff)
 	if nil != err {
 		log.Printf("failed to decompress cached value: %s", err)
 		return nil
 	}
 	defer gzipRdr.Close()
-	data, err := ioutil.ReadAll(gzipRdr)
+	valueBytes, err = ioutil.ReadAll(gzipRdr)
 	if nil != err {
 		log.Printf("failed to read cached value: %s", err)
 		return nil
 	}
-	return data
+	return valueBytes
 }
 
-func SetCache(provider, reqType, id string, expires time.Duration, value []byte) bool {
-	key := GenCacheKey(provider, reqType, id)
+func SetCache(key string, value []byte, expires time.Duration, compress bool) bool {
 	if "" == key {
 		return false
 	}
 
-	// compress value
-	var buff bytes.Buffer
-	gzipWtr := gzip.NewWriter(&buff)
-	_, err := gzipWtr.Write(value)
-	if nil != err {
-		log.Printf("failed to compress value: %s", err)
-		return false
-	}
-	err = gzipWtr.Close()
-	if nil != err {
-		log.Printf("failed to compress value: %s", err)
-		return false
+	var err error
+	if compress {
+		// compress value
+		var buff bytes.Buffer
+		gzipWtr := gzip.NewWriter(&buff)
+		_, err = gzipWtr.Write(value)
+		if nil != err {
+			log.Printf("failed to compress value: %s", err)
+			return false
+		}
+		err = gzipWtr.Close()
+		if nil != err {
+			log.Printf("failed to compress value: %s", err)
+			return false
+		}
+		value = buff.Bytes()
 	}
 
-	// save compressed value in cache
+	// save value in redis cache
 	redisConn := gRedisPool.Get()
 	defer redisConn.Close()
 	if expires != 0 {
-		_, err = redisConn.Do("SETEX", key, expires.Seconds(), buff.Bytes())
+		_, err = redisConn.Do("SETEX", key, expires.Seconds(), value)
 	} else {
 		// no expiration if expires is 0
-		_, err = redisConn.Do("SET", key, buff.Bytes())
+		_, err = redisConn.Do("SET", key, value)
 	}
 	if nil != err {
 		log.Printf("failed to send value to redis server %s: %s", *gFlagRedisAddr, err)

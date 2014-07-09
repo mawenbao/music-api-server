@@ -1,26 +1,39 @@
 package main
 
 import (
+	"bytes"
+	"crypto/md5"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
 const (
-	gNeteaseRetOk       = 200
-	gNeteaseProvider    = "netease"
-	gNeteaseAPIUrlBase  = "http://music.163.com/api"
-	gNeteaseAlbumUrl    = "/album/"
-	gNeteaseSongListUrl = "/song/detail?ids=[%s]"
-	gNeteasePlayListUrl = "/playlist/detail?id="
+	gNeteaseRetOk             = 200
+	gNeteaseProvider          = "netease"
+	gNeteaseAPIUrlBase        = "http://music.163.com/api"
+	gNeteaseAlbumUrl          = "/album/"
+	gNeteaseSongListUrl       = "/song/detail?ids=[%s]"
+	gNeteasePlayListUrl       = "/playlist/detail?id="
+	gNeteaseLowQuality        = "low"
+	gNeteaseMediumQuality     = "medium"
+	gNeteaseHighQuality       = "high"
+	gNeteaseEIDCacheKeyPrefix = "163eid:" // encrypted dfsId
+	gNeteaseMusicCDNUrl       = "http://m1.music.126.net/%s/%s.mp3"
 )
 
 var (
-	gNeteaseClient = &http.Client{}
+	gNeteaseClient      = &http.Client{}
+	gNeteaseEIDReplacer = strings.NewReplacer(
+		"/", "_",
+		"+", "-",
+	)
 )
 
 func init() {
@@ -71,9 +84,58 @@ type NeteasePlayList struct {
 }
 
 type NeteaseSong struct {
-	Artists []NeteaseArtist `json:"artists"`
-	Name    string          `json:"name"`
-	Url     string          `json:"mp3Url"`
+	Artists            []NeteaseArtist    `json:"artists"`
+	Name               string             `json:"name"`
+	Url                string             `json:"mp3Url"`
+	HighQualityMusic   NeteaseMusicDetail `json:"hMusic"`
+	MediumQualityMusic NeteaseMusicDetail `json:"mMusic"`
+	LowQualityMusic    NeteaseMusicDetail `json:"lMusic"`
+}
+
+func (song *NeteaseSong) UpdateUrl(quality string) *NeteaseSong {
+	if "" == quality || gNeteaseMediumQuality == quality {
+		return song
+	}
+	musicDetail := song.HighQualityMusic
+	if gNeteaseLowQuality == quality {
+		musicDetail = song.LowQualityMusic
+	}
+	song.Url = musicDetail.GetUrl()
+	return song
+}
+
+type NeteaseMusicDetail struct {
+	Bitrate int `json:"bitrate"`
+	DfsID   int `json:"dfsId"`
+}
+
+func (md *NeteaseMusicDetail) GetUrl() string {
+	strDfsID := strconv.Itoa(md.DfsID)
+	// load eid from cache first
+	eidKey := gCacheKeyPrefix + gNeteaseEIDCacheKeyPrefix + strDfsID
+	eid := GetCache(eidKey, false)
+	if nil == eid {
+		// build encrypted dfsId, see https://github.com/yanunon/NeteaseCloudMusic/wiki/网易云音乐API分析#歌曲id加密代码
+		byte1 := []byte("3go8&$8*3*3h0k(2)2")
+		byte2 := []byte(strDfsID)
+		byte1Len := len(byte1)
+		for i := range byte2 {
+			byte2[i] = byte2[i] ^ byte1[i%byte1Len]
+		}
+		sum := md5.Sum(byte2)
+		var buff bytes.Buffer
+		enc := base64.NewEncoder(base64.StdEncoding, &buff)
+		_, err := enc.Write(sum[:])
+		if nil != err {
+			log.Printf("error encoding(base64) netease dfsId %s", strDfsID)
+			return ""
+		}
+		enc.Close()
+		eid = []byte(gNeteaseEIDReplacer.Replace(buff.String()))
+	}
+	// update cache, no expiration, no compression
+	SetCache(eidKey, eid, 0, false)
+	return fmt.Sprintf(gNeteaseMusicCDNUrl, eid, strDfsID)
 }
 
 func (ns *NeteaseSong) ArtistsString() string {
@@ -88,8 +150,8 @@ type NeteaseArtist struct {
 	Name string `json:"name"`
 }
 
-func GetNeteaseAlbum(albumId string) *SongList {
-	url := gNeteaseAPIUrlBase + gNeteaseAlbumUrl + albumId
+func GetNeteaseAlbum(params *ReqParams) *SongList {
+	url := gNeteaseAPIUrlBase + gNeteaseAlbumUrl + params.ID
 	ret := GetUrl(gNeteaseClient, url)
 	sl := NewSongList()
 	if nil == ret {
@@ -106,7 +168,7 @@ func GetNeteaseAlbum(albumId string) *SongList {
 	}
 
 	for i, _ := range albumRet.Album.Songs {
-		song := &albumRet.Album.Songs[i]
+		song := (&albumRet.Album.Songs[i]).UpdateUrl(params.Quality)
 		sl.AddSong(&Song{
 			Name:     song.Name,
 			Url:      song.Url,
@@ -117,8 +179,8 @@ func GetNeteaseAlbum(albumId string) *SongList {
 	return sl
 }
 
-func GetNeteaseSongList(songs string) *SongList {
-	url := fmt.Sprintf(gNeteaseAPIUrlBase+gNeteaseSongListUrl, songs)
+func GetNeteaseSongList(params *ReqParams) *SongList {
+	url := fmt.Sprintf(gNeteaseAPIUrlBase+gNeteaseSongListUrl, params.ID)
 	ret := GetUrl(gNeteaseClient, url)
 	sl := NewSongList()
 	if nil == ret {
@@ -135,7 +197,7 @@ func GetNeteaseSongList(songs string) *SongList {
 	}
 
 	for i, _ := range songlistRet.Songs {
-		song := &songlistRet.Songs[i]
+		song := (&songlistRet.Songs[i]).UpdateUrl(params.Quality)
 		sl.AddSong(&Song{
 			Name:     song.Name,
 			Url:      song.Url,
@@ -146,8 +208,8 @@ func GetNeteaseSongList(songs string) *SongList {
 	return sl
 }
 
-func GetNeteasePlayList(listId string) *SongList {
-	url := gNeteaseAPIUrlBase + gNeteasePlayListUrl + listId
+func GetNeteasePlayList(params *ReqParams) *SongList {
+	url := gNeteaseAPIUrlBase + gNeteasePlayListUrl + params.ID
 	ret := GetUrl(gNeteaseClient, url)
 	sl := NewSongList()
 	if nil == ret {
@@ -164,7 +226,7 @@ func GetNeteasePlayList(listId string) *SongList {
 	}
 
 	for i, _ := range playlistRet.Result.Songs {
-		song := &playlistRet.Result.Songs[i]
+		song := (&playlistRet.Result.Songs[i]).UpdateUrl(params.Quality)
 		sl.AddSong(&Song{
 			Name:     song.Name,
 			Url:      song.Url,

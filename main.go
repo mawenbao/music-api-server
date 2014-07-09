@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"reflect"
 	"runtime"
@@ -21,6 +22,7 @@ var (
 	gFlagListenPort      = flag.Int("port", 9099, "port to listen on")
 	gFlagLogfile         = flag.String("log", "", "path of the log file")
 	gFlagCacheExpiration = flag.Int("expire", 3600, "expiry time(in seconds) of redis cache, default is one hour, 0 means no expiration")
+	gCacheExpiryTime     = time.Hour
 	// available music service functions
 	gAvailableGetMusicFuncs = []interface{}{
 		GetXiamiSongList,
@@ -111,17 +113,30 @@ func (sl *SongList) ToJsonString() string {
 }
 
 func GetUrl(client *http.Client, url string) []byte {
+	cacheKey := GenUrlCacheKey(url)
+	if "" == cacheKey {
+		return nil
+	}
+	// try to load from cache first
+	body := GetCache(cacheKey, true)
+	if nil != body {
+		return body
+	}
+
+	// cache missed, do http request
 	resp, err := client.Get(url)
 	if err != nil {
 		log.Printf("error get url %s: %s", url, err)
 		return nil
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("error getting response body from url %s: %s", url, err)
 		return nil
 	}
+	// update cache, with compression
+	SetCache(cacheKey, body, gCacheExpiryTime, true)
 	return body
 }
 
@@ -143,31 +158,39 @@ func callGetMusicFunc(myFunc, param interface{}) *SongList {
 		})[0].Interface().(*SongList)
 }
 
+type ReqParams struct {
+	ID,
+	Callback,
+	Provider,
+	Quality,
+	ReqType string
+}
+
+func ParseReqParams(queries url.Values) *ReqParams {
+	params := &ReqParams{}
+	params.Callback = strings.ToLower(queries.Get("c"))
+	params.Provider = strings.ToLower(queries.Get("p"))
+	params.ReqType = strings.ToLower(strings.TrimSpace(queries.Get("t")))
+	params.ID = strings.TrimSpace(queries.Get("i"))
+	params.Quality = strings.ToLower(queries.Get("q"))
+	return params
+}
+
 func createServMux() http.Handler {
 	servMux := http.NewServeMux()
 	servMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		queries := r.URL.Query()
-		callback := strings.ToLower(queries.Get("c"))
-		provider := strings.ToLower(queries.Get("p"))
-		reqType := strings.ToLower(strings.TrimSpace(queries.Get("t")))
-		id := strings.TrimSpace(queries.Get("i"))
-		// get cache first
-		result := GetCache(provider, reqType, id)
-		if nil == result {
-			// cache missed
-			myGetMusicFunc, ok := gGetMusicFuncMap["get"+provider+reqType]
-			if !ok {
-				result = []byte(NewSongList().SetAndLogErrorf("invalid request arguments").ToJsonString())
-			} else {
-				// fetch and parse music data
-				result = []byte(callGetMusicFunc(myGetMusicFunc, id).ToJsonString())
-				// update cache
-				SetCache(provider, reqType, id, time.Duration(*gFlagCacheExpiration)*time.Second, result)
-			}
+		params := ParseReqParams(r.URL.Query())
+		myGetMusicFunc, ok := gGetMusicFuncMap["get"+params.Provider+params.ReqType]
+		var result []byte
+		if !ok {
+			result = []byte(NewSongList().SetAndLogErrorf("invalid request arguments").ToJsonString())
+		} else {
+			// fetch and parse music data
+			result = []byte(callGetMusicFunc(myGetMusicFunc, params).ToJsonString())
 		}
-		if "" != callback {
+		if "" != params.Callback {
 			// jsonp
-			result = []byte(callback + "(" + string(result) + ");")
+			result = []byte(params.Callback + "(" + string(result) + ");")
 		}
 		w.Write(result)
 	})
@@ -188,6 +211,9 @@ func main() {
 		log.SetOutput(logfile)
 	}
 
+	// set cache expiry time
+	gCacheExpiryTime = time.Duration(*gFlagCacheExpiration) * time.Second
+
 	// init http server
 	serverAddr := ":" + strconv.Itoa(*gFlagListenPort)
 	httpServer := &http.Server{
@@ -195,7 +221,7 @@ func main() {
 		Handler: createServMux(),
 	}
 	// start server
-	log.Printf("Start music api server ...")
-	log.Printf("Listening at %s ...\n", serverAddr)
+	log.Println("Start music api server ...")
+	log.Printf("Listening at %s ...", serverAddr)
 	log.Fatal(httpServer.ListenAndServe())
 }
