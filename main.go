@@ -16,6 +16,12 @@ import (
 	"time"
 )
 
+const (
+	gMusicQualityLow    = "low"
+	gMusicQualityMedium = "medium"
+	gMusicQualityHigh   = "high"
+)
+
 var (
 	// command line options
 	gFlagRedisAddr       = flag.String("redis", "localhost:6379", "address(host:port) of redis server")

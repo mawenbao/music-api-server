@@ -21,9 +21,6 @@ const (
 	gNeteaseAlbumUrl          = "/album/"
 	gNeteaseSongListUrl       = "/song/detail?ids=[%s]"
 	gNeteasePlayListUrl       = "/playlist/detail?id="
-	gNeteaseLowQuality        = "low"
-	gNeteaseMediumQuality     = "medium"
-	gNeteaseHighQuality       = "high"
 	gNeteaseEIDCacheKeyPrefix = "163eid:" // encrypted dfsId
 	gNeteaseMusicCDNUrl       = "http://m1.music.126.net/%s/%s.mp3"
 )
@@ -93,12 +90,12 @@ type NeteaseSong struct {
 }
 
 func (song *NeteaseSong) UpdateUrl(quality string) *NeteaseSong {
-	if "" == quality || gNeteaseMediumQuality == quality {
+	if "" == quality || gMusicQualityMedium == quality {
 		return song
 	}
-	musicDetail := song.HighQualityMusic
-	if gNeteaseLowQuality == quality {
-		musicDetail = song.LowQualityMusic
+	musicDetail := &song.HighQualityMusic
+	if gMusicQualityLow == quality {
+		musicDetail = &song.LowQualityMusic
 	}
 	song.Url = musicDetail.GetUrl()
 	return song
