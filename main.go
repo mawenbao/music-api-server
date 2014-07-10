@@ -187,7 +187,6 @@ func createServMux() http.Handler {
 			result = []byte(NewSongList().SetAndLogErrorf("invalid request arguments").ToJsonString())
 		} else {
 			// fetch and parse music data
-			//result = []byte(callGetMusicFunc(myGetMusicFunc, params).ToJsonString())
 			result = []byte(myGetMusicFunc(params).ToJsonString())
 		}
 		if "" != params.Callback {
