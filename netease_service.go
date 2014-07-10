@@ -22,7 +22,7 @@ const (
 	gNeteaseSongListUrl       = "/song/detail?ids=[%s]"
 	gNeteasePlayListUrl       = "/playlist/detail?id="
 	gNeteaseEIDCacheKeyPrefix = "163eid:" // encrypted dfsId
-	gNeteaseMusicCDNUrl       = "http://m1.music.126.net/%s/%s.mp3"
+	gNeteaseMusicCDNUrlF      = "http://m1.music.126.net/%s/%s.mp3"
 )
 
 var (
@@ -97,7 +97,7 @@ func (song *NeteaseSong) UpdateUrl(quality string) *NeteaseSong {
 	if gMusicQualityLow == quality {
 		musicDetail = &song.LowQualityMusic
 	}
-	song.Url = musicDetail.GetUrl()
+	song.Url = musicDetail.MakeUrl()
 	return song
 }
 
@@ -106,7 +106,7 @@ type NeteaseMusicDetail struct {
 	DfsID   int `json:"dfsId"`
 }
 
-func (md *NeteaseMusicDetail) GetUrl() string {
+func (md *NeteaseMusicDetail) MakeUrl() string {
 	strDfsID := strconv.Itoa(md.DfsID)
 	// load eid from cache first
 	eidKey := gCacheKeyPrefix + gNeteaseEIDCacheKeyPrefix + strDfsID
@@ -124,7 +124,7 @@ func (md *NeteaseMusicDetail) GetUrl() string {
 		enc := base64.NewEncoder(base64.StdEncoding, &buff)
 		_, err := enc.Write(sum[:])
 		if nil != err {
-			log.Printf("error encoding(base64) netease dfsId %s", strDfsID)
+			log.Printf("error encoding(base64) netease dfsId %s:%s", strDfsID, err)
 			return ""
 		}
 		enc.Close()
@@ -132,7 +132,7 @@ func (md *NeteaseMusicDetail) GetUrl() string {
 	}
 	// update cache, no expiration, no compression
 	SetCache(eidKey, eid, 0, false)
-	return fmt.Sprintf(gNeteaseMusicCDNUrl, eid, strDfsID)
+	return fmt.Sprintf(gNeteaseMusicCDNUrlF, eid, strDfsID)
 }
 
 func (ns *NeteaseSong) ArtistsString() string {

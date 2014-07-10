@@ -30,7 +30,7 @@ var (
 	gFlagCacheExpiration = flag.Int("expire", 3600, "expiry time(in seconds) of redis cache, default is one hour, 0 means no expiration")
 	gCacheExpiryTime     = time.Hour
 	// available music service functions
-	gAvailableGetMusicFuncs = []interface{}{
+	gAvailableGetMusicFuncs = []GetMusicFunc{
 		GetXiamiSongList,
 		GetXiamiAlbum,
 		GetXiamiCollect,
@@ -38,7 +38,7 @@ var (
 		GetNeteaseAlbum,
 		GetNeteasePlayList,
 	}
-	gGetMusicFuncMap = make(map[string]interface{})
+	gGetMusicFuncMap = make(map[string]GetMusicFunc)
 )
 
 func init() {
@@ -46,6 +46,26 @@ func init() {
 	for _, f := range gAvailableGetMusicFuncs {
 		gGetMusicFuncMap[getLowerFuncName(f)] = f
 	}
+}
+
+type GetMusicFunc func(*ReqParams) *SongList
+
+type ReqParams struct {
+	ID,
+	Callback,
+	Provider,
+	Quality,
+	ReqType string
+}
+
+func ParseReqParams(queries url.Values) *ReqParams {
+	params := &ReqParams{}
+	params.Callback = strings.ToLower(queries.Get("c"))
+	params.Provider = strings.ToLower(queries.Get("p"))
+	params.ReqType = strings.ToLower(strings.TrimSpace(queries.Get("t")))
+	params.ID = strings.TrimSpace(queries.Get("i"))
+	params.Quality = strings.ToLower(queries.Get("q"))
+	return params
 }
 
 type Song struct {
@@ -157,31 +177,6 @@ func getLowerFuncName(i interface{}) string {
 	return strings.Split(funcName, ".")[1]
 }
 
-func callGetMusicFunc(myFunc, param interface{}) *SongList {
-	return reflect.ValueOf(myFunc).Call(
-		[]reflect.Value{
-			reflect.ValueOf(param),
-		})[0].Interface().(*SongList)
-}
-
-type ReqParams struct {
-	ID,
-	Callback,
-	Provider,
-	Quality,
-	ReqType string
-}
-
-func ParseReqParams(queries url.Values) *ReqParams {
-	params := &ReqParams{}
-	params.Callback = strings.ToLower(queries.Get("c"))
-	params.Provider = strings.ToLower(queries.Get("p"))
-	params.ReqType = strings.ToLower(strings.TrimSpace(queries.Get("t")))
-	params.ID = strings.TrimSpace(queries.Get("i"))
-	params.Quality = strings.ToLower(queries.Get("q"))
-	return params
-}
-
 func createServMux() http.Handler {
 	servMux := http.NewServeMux()
 	servMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -192,7 +187,8 @@ func createServMux() http.Handler {
 			result = []byte(NewSongList().SetAndLogErrorf("invalid request arguments").ToJsonString())
 		} else {
 			// fetch and parse music data
-			result = []byte(callGetMusicFunc(myGetMusicFunc, params).ToJsonString())
+			//result = []byte(callGetMusicFunc(myGetMusicFunc, params).ToJsonString())
+			result = []byte(myGetMusicFunc(params).ToJsonString())
 		}
 		if "" != params.Callback {
 			// jsonp
