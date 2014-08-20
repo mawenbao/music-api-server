@@ -50,6 +50,12 @@ type XiamiSong struct {
 	Artist string `json:"author"`
 }
 
+func init() {
+	if !setXiamiToken() {
+		log.Fatalln("failed to set xiami token")
+	}
+}
+
 func isXiamiTokenSet() bool {
 	return (gXiamiTokenName + "=") != gXiamiTokenVal
 }
@@ -96,12 +102,6 @@ func getXiamiUrl(client *http.Client, url string) []byte {
 	body := GetCache(cacheKey, true)
 	if nil != body {
 		return body
-	}
-
-	// set xiami token first
-	if !setXiamiToken() {
-		log.Printf("failed to get xiami token")
-		return nil
 	}
 
 	// do the real request
