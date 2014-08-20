@@ -19,9 +19,7 @@ var (
 	// minimize cache key length
 	gUrlKeyReplacer = strings.NewReplacer(
 		"http://", "",
-		"www.xiami.com", "xiami",
-		"/app/android", "",
-		"/app/iphone", "",
+		"m.xiami.com/web/get-songs?type=0&rtype=", "xiami:",
 		"music.163.com", "163",
 		"/api", "",
 	)

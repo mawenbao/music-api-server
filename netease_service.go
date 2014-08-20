@@ -16,7 +16,7 @@ import (
 
 const (
 	gNeteaseRetOk             = 200
-	gNeteaseProvider          = "netease"
+	gNeteaseProvider          = "http://music.163.com/"
 	gNeteaseAPIUrlBase        = "http://music.163.com/api"
 	gNeteaseAlbumUrl          = "/album/"
 	gNeteaseSongListUrl       = "/song/detail?ids=[%s]"

@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -10,15 +12,26 @@ const (
 	gXiamiSongSplitter = ","
 	gXiamiRetOK        = "ok"
 	gXiamiRetFail      = "failed"
-	gXiamiProvider     = "xiami"
-	gXiamiAPIUrlBase   = "http://www.xiami.com/app"
-	gXiamiSongUrl      = "/android/song/id/"
-	gXiamiAlbumUrl     = "/iphone/album/id/"
-	gXiamiCollectUrl   = "/android/collect?id="
+	gXiamiTokenName    = "_xiamitoken"
+	gXiamiProvider     = "http://www.xiami.com/"
+	gXiamiAPIUrlBase   = "http://m.xiami.com/web/get-songs?type=0&rtype="
+	gXiamiSongUrl      = "song&id="
+	gXiamiAlbumUrl     = "album&id="
+	gXiamiCollectUrl   = "collect&id="
 )
 
 var (
-	gXiamiClient = &http.Client{}
+	gXiamiTokenVal    = "_xiamitoken="
+	gXiamiClient      = &http.Client{}
+	gXiamiHttpHeaders = map[string]string{
+		"User-Agent":       "Mozilla/5.0 (iPhone; CPU iPhone OS 7_1_2 like Mac OS X) AppleWebKit/537.51.2 (KHTML, like Gecko) Version/7.0 Mobile/11D257 Safari/9537.53",
+		"Referer":          "http://m.xiami.com/",
+		"Host":             "m.xiami.com",
+		"Proxy-Connection": "keep-alive",
+		"X-Requested-With": "XMLHttpRequest",
+		"X-FORWARDED-FOR":  "42.156.140.238",
+		"CLIENT-IP":        "42.156.140.238",
+	}
 )
 
 type XiamiRetStatus struct {
@@ -26,70 +39,134 @@ type XiamiRetStatus struct {
 	Message string `json:"msg"`
 }
 
-type XiamiSongRet struct {
+type XiamiRet struct {
 	XiamiRetStatus
-	Song XiamiSong `json:"song"`
+	Songs []XiamiSong `json:"data"`
 }
 
 type XiamiSong struct {
-	Name   string `json:"song_name"`
-	Url    string `json:"song_location"`
-	Lrc    string `json:"song_lrc"`
-	Artist string `json:"artist_name"`
+	Name   string `json:"title"`
+	Url    string `json:"src"`
+	Artist string `json:"author"`
 }
 
-type XiamiCollectRet struct {
-	XiamiRetStatus
-	Collect XiamiCollect `json:"collect"`
+func isXiamiTokenSet() bool {
+	return (gXiamiTokenName + "=") != gXiamiTokenVal
 }
 
-type XiamiCollect struct {
-	Songs []XiamiCollectSong `json:"songs"`
+func setXiamiToken() bool {
+	if isXiamiTokenSet() {
+		return true
+	}
+	tokenUrl := "http://m.xiami.com"
+	req, err := http.NewRequest("HEAD", tokenUrl, nil)
+	if nil != err {
+		log.Printf("failed to create http request for url %s: %s", tokenUrl, err)
+		return false
+	}
+	for k, v := range gXiamiHttpHeaders {
+		req.Header.Add(k, v)
+	}
+	resp, err := gXiamiClient.Do(req)
+	defer resp.Body.Close()
+	if nil != err {
+		log.Printf("error get url %s: %s", tokenUrl, err)
+		return false
+	}
+
+	// parse xiami token from cookies
+	for _, c := range resp.Cookies() {
+		if gXiamiTokenName == c.Name {
+			gXiamiTokenVal += c.Value
+		}
+	}
+	if !isXiamiTokenSet() {
+		log.Printf("error get xiami token from response cookies")
+		return false
+	}
+	return true
 }
 
-type XiamiCollectSong struct {
-	Name   string `json:"name"`
-	Url    string `json:"location"`
-	Lrc    string `json:"lyric"`
-	Artist string `json:"singers"`
+func getXiamiUrl(client *http.Client, url string) []byte {
+	cacheKey := GenUrlCacheKey(url)
+	if "" == cacheKey {
+		return nil
+	}
+	// try to load from cache first
+	body := GetCache(cacheKey, true)
+	if nil != body {
+		return body
+	}
+
+	// set xiami token first
+	if !setXiamiToken() {
+		log.Printf("failed to get xiami token")
+		return nil
+	}
+
+	// do the real request
+	urlWithToken := url + "&" + gXiamiTokenVal
+	req, err := http.NewRequest("GET", urlWithToken, nil)
+	if nil != err {
+		log.Printf("failed to create http request for url %s: %s", urlWithToken, err)
+		return nil
+	}
+	for k, v := range gXiamiHttpHeaders {
+		req.Header.Add(k, v)
+	}
+	req.Header.Add("Cookie", gXiamiTokenVal)
+	resp, err := gXiamiClient.Do(req)
+	if nil != err {
+		log.Printf("error get url %s: %s")
+		return nil
+	}
+	defer resp.Body.Close()
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("error getting response body from url %s: %s", url, err)
+		return nil
+	}
+
+	// update cache, with compression
+	SetCache(cacheKey, body, gCacheExpiryTime, true)
+	return body
 }
 
-type XiamiAlbumRet struct {
-	XiamiRetStatus
-	Album XiamiAlbum `json:"album"`
-}
-
-type XiamiAlbum struct {
-	Songs map[string]XiamiCollectSong
-}
-
-func getXiamiSong(songID string) *SongList {
+func parseXiamiRetData(url string, data []byte) *SongList {
 	sl := NewSongList()
-	url := gXiamiAPIUrlBase + gXiamiSongUrl + strings.TrimSpace(songID)
-	ret := GetUrl(gXiamiClient, url)
-	if nil == ret {
+	if nil == data {
 		return sl.SetAndLogErrorf("error accessing url %s", url)
 	}
 
-	var songret XiamiSongRet
-	err := json.Unmarshal(ret, &songret)
+	var songret XiamiRet
+	err := json.Unmarshal(data, &songret)
 	if nil != err {
-		return sl.SetAndLogErrorf("error parsing song info from url %s: %s", url, err)
+		return sl.SetAndLogErrorf("error parsing xiami return data from url %s: %s", url, err)
 	}
+
 	if gXiamiRetOK != songret.Status {
 		return sl.SetAndLogErrorf("error getting url %s: %s", url, songret.Message)
 	}
-	emptyXiamiSong := XiamiSong{}
-	if emptyXiamiSong == songret.Song {
-		return sl.SetAndLogErrorf("invalid song id %s", songID)
+	if 0 == len(songret.Songs) {
+		return sl.SetAndLogErrorf("invalid xiami url: %s", url)
 	}
-	return sl.AddSong(&Song{
-		Name:     songret.Song.Name,
-		Url:      songret.Song.Url,
-		Artists:  songret.Song.Artist,
-		LrcUrl:   songret.Song.Lrc,
-		Provider: gXiamiProvider,
-	})
+
+	for i, _ := range songret.Songs {
+		song := &songret.Songs[i]
+		sl.AddSong(&Song{
+			Name:     song.Name,
+			Url:      song.Url,
+			Artists:  song.Artist,
+			Provider: gXiamiProvider,
+		})
+	}
+	return sl
+}
+
+func getXiamiSong(songID string) *SongList {
+	url := gXiamiAPIUrlBase + gXiamiSongUrl + strings.TrimSpace(songID)
+	ret := getXiamiUrl(gXiamiClient, url)
+	return parseXiamiRetData(url, ret)
 }
 
 func GetXiamiSongList(params *ReqParams) *SongList {
@@ -106,56 +183,12 @@ func GetXiamiSongList(params *ReqParams) *SongList {
 
 func GetXiamiCollect(params *ReqParams) *SongList {
 	url := gXiamiAPIUrlBase + gXiamiCollectUrl + strings.TrimSpace(params.ID)
-	ret := GetUrl(gXiamiClient, url)
-	sl := NewSongList()
-	if nil == ret {
-		return sl.SetAndLogErrorf("error accessing url %s", url)
-	}
-	var collectRet XiamiCollectRet
-	err := json.Unmarshal(ret, &collectRet)
-	if nil != err {
-		return sl.SetAndLogErrorf("error parsing collect data from url %s: %s", url, err)
-	}
-	if gXiamiRetOK != collectRet.Status {
-		return sl.SetAndLogErrorf("error getting url %s: %s", url, collectRet.Message)
-	}
-	for i, _ := range collectRet.Collect.Songs {
-		song := &collectRet.Collect.Songs[i]
-		sl.AddSong(&Song{
-			Name:     song.Name,
-			Url:      song.Url,
-			LrcUrl:   song.Lrc,
-			Artists:  song.Artist,
-			Provider: gXiamiProvider,
-		})
-	}
-	return sl
+	ret := getXiamiUrl(gXiamiClient, url)
+	return parseXiamiRetData(url, ret)
 }
 
 func GetXiamiAlbum(params *ReqParams) *SongList {
 	url := gXiamiAPIUrlBase + gXiamiAlbumUrl + strings.TrimSpace(params.ID)
-	ret := GetUrl(gXiamiClient, url)
-	sl := NewSongList()
-	if nil == ret {
-		return sl.SetAndLogErrorf("error accessing url %s", url)
-	}
-	var albumRet XiamiAlbumRet
-	err := json.Unmarshal(ret, &albumRet)
-	if nil != err {
-		return sl.SetAndLogErrorf("error parsing album data from url %s: %s", url, err)
-	}
-	if gXiamiRetOK != albumRet.Status {
-		return sl.SetAndLogErrorf("error getting url %s: %s", url, albumRet.Message)
-	}
-	for k, _ := range albumRet.Album.Songs {
-		song := albumRet.Album.Songs[k]
-		sl.AddSong(&Song{
-			Name:     song.Name,
-			Url:      song.Url,
-			LrcUrl:   song.Lrc,
-			Artists:  song.Artist,
-			Provider: gXiamiProvider,
-		})
-	}
-	return sl
+	ret := getXiamiUrl(gXiamiClient, url)
+	return parseXiamiRetData(url, ret)
 }
