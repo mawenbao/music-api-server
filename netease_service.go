@@ -31,10 +31,10 @@ var (
 		"/", "_",
 		"+", "-",
 	)
-    // bypass cross-domain problem
-    gNeteaseUrlReplacer = strings.NewReplacer(
-        "http://m", "http://p",
-    )
+	// bypass cross-domain problem
+	gNeteaseUrlReplacer = strings.NewReplacer(
+		"http://m", "http://p",
+	)
 )
 
 func init() {
@@ -95,7 +95,7 @@ type NeteaseSong struct {
 
 func (song *NeteaseSong) UpdateUrl(quality string) *NeteaseSong {
 	if "" == quality || gMusicQualityMedium == quality {
-        song.Url = gNeteaseUrlReplacer.Replace(song.Url)
+		song.Url = gNeteaseUrlReplacer.Replace(song.Url)
 		return song
 	}
 	musicDetail := &song.HighQualityMusic
