@@ -22,7 +22,7 @@ const (
 	gNeteaseSongListUrl       = "/song/detail?ids=[%s]"
 	gNeteasePlayListUrl       = "/playlist/detail?id="
 	gNeteaseEIDCacheKeyPrefix = "163eid:" // encrypted dfsId
-	gNeteaseMusicCDNUrlF      = "http://m1.music.126.net/%s/%s.mp3"
+	gNeteaseMusicCDNUrlF      = "http://p1.music.126.net/%s/%s.mp3"
 )
 
 var (
@@ -31,6 +31,10 @@ var (
 		"/", "_",
 		"+", "-",
 	)
+    // bypass cross-domain problem
+    gNeteaseUrlReplacer = strings.NewReplacer(
+        "http://m", "http://p",
+    )
 )
 
 func init() {
@@ -91,6 +95,7 @@ type NeteaseSong struct {
 
 func (song *NeteaseSong) UpdateUrl(quality string) *NeteaseSong {
 	if "" == quality || gMusicQualityMedium == quality {
+        song.Url = gNeteaseUrlReplacer.Replace(song.Url)
 		return song
 	}
 	musicDetail := &song.HighQualityMusic
