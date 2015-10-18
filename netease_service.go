@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"strconv"
 	"strings"
 )
 
@@ -107,12 +106,12 @@ func (song *NeteaseSong) UpdateUrl(quality string) *NeteaseSong {
 }
 
 type NeteaseMusicDetail struct {
-	Bitrate int `json:"bitrate"`
-	DfsID   int `json:"dfsId"`
+	Bitrate json.Number `json:"bitrate,Number"`
+	DfsID   json.Number `json:"dfsId,Number"`
 }
 
 func (md *NeteaseMusicDetail) MakeUrl() string {
-	strDfsID := strconv.Itoa(md.DfsID)
+	strDfsID := string(md.DfsID)
 	// load eid from cache first
 	eidKey := gCacheKeyPrefix + gNeteaseEIDCacheKeyPrefix + strDfsID
 	eid := GetCache(eidKey, false)
