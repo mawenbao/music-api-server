@@ -90,6 +90,7 @@ type NeteaseSong struct {
 	HighQualityMusic   NeteaseMusicDetail `json:"hMusic"`
 	MediumQualityMusic NeteaseMusicDetail `json:"mMusic"`
 	LowQualityMusic    NeteaseMusicDetail `json:"lMusic"`
+	BestQualityMusic   NeteaseMusicDetail `json:"bMusic"`
 }
 
 func (song *NeteaseSong) UpdateUrl(quality string) *NeteaseSong {
@@ -100,6 +101,9 @@ func (song *NeteaseSong) UpdateUrl(quality string) *NeteaseSong {
 	musicDetail := &song.HighQualityMusic
 	if gMusicQualityLow == quality {
 		musicDetail = &song.LowQualityMusic
+	}
+	if musicDetail.DfsID == "" {
+		musicDetail = &song.BestQualityMusic
 	}
 	song.Url = musicDetail.MakeUrl()
 	return song
