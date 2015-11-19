@@ -10,14 +10,14 @@ import (
 
 const (
 	gXiamiSongSplitter = ","
-	gXiamiRetOK        = "ok"
+	gXiamiRetOK        = 0
 	gXiamiRetFail      = "failed"
 	gXiamiTokenName    = "_xiamitoken"
 	gXiamiProvider     = "http://www.xiami.com/"
-	gXiamiAPIUrlBase   = "http://m.xiami.com/web/get-songs?type=0&rtype="
-	gXiamiSongUrl      = "song&id="
-	gXiamiAlbumUrl     = "album&id="
-	gXiamiCollectUrl   = "collect&id="
+	gXiamiAPIUrlBase   = "http://api.xiami.com/web?v=2.0&app_key=1&r="
+	gXiamiSongUrl      = "song/detail&id="
+	gXiamiAlbumUrl     = "album/detail&id="
+	gXiamiCollectUrl   = "collect/detail&type=collectId&id="
 )
 
 var (
@@ -35,19 +35,24 @@ var (
 )
 
 type XiamiRetStatus struct {
-	Status  string `json:"status"`
-	Message string `json:"msg"`
+	Status  int    `json:"state"`
+	Message string `json:"message"`
+}
+
+type XiamiSong struct {
+	Name   string `json:"song_name"`
+	Url    string `json:"listen_file"`
+	Artist string `json:"singers"`
+}
+
+type XiamiRetData struct {
+	Songs []XiamiSong `json:"songs"`
+	Song  XiamiSong   `json:"song"`
 }
 
 type XiamiRet struct {
 	XiamiRetStatus
-	Songs []XiamiSong `json:"data"`
-}
-
-type XiamiSong struct {
-	Name   string `json:"title"`
-	Url    string `json:"src"`
-	Artist string `json:"author"`
+	XiamiRetData `json:"data"`
 }
 
 func init() {
@@ -147,20 +152,30 @@ func parseXiamiRetData(url string, data []byte) *SongList {
 	if gXiamiRetOK != songret.Status {
 		return sl.SetAndLogErrorf("error getting url %s: %s", url, songret.Message)
 	}
-	if 0 == len(songret.Songs) {
-		return sl.SetAndLogErrorf("invalid xiami url: %s", url)
-	}
 
-	for i, _ := range songret.Songs {
-		song := &songret.Songs[i]
+	if 0 != len(songret.Songs) {
+		// for album and collect
+		for i, _ := range songret.Songs {
+			song := &songret.Songs[i]
+			sl.AddSong(&Song{
+				Name:     song.Name,
+				Url:      song.Url,
+				Artists:  song.Artist,
+				Provider: gXiamiProvider,
+			})
+		}
+		return sl
+	} else if "" != songret.Song.Url {
 		sl.AddSong(&Song{
-			Name:     song.Name,
-			Url:      song.Url,
-			Artists:  song.Artist,
+			Name:     songret.Song.Name,
+			Url:      songret.Song.Url,
+			Artists:  songret.Song.Artist,
 			Provider: gXiamiProvider,
 		})
+		return sl
+	} else {
+		return sl.SetAndLogErrorf("invalid xiami url: %s", url)
 	}
-	return sl
 }
 
 func getXiamiSong(songID string) *SongList {
