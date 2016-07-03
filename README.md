@@ -53,7 +53,7 @@
 ## API
 ### Demo
 
-[http://app.atime.me/music-api-server/?p=xiami&t=songlist&i=20526,1772292423&c=abc123](http://app.atime.me/music-api-server/?p=xiami&t=songlist&i=20526,1772292423&c=abc123)
+[https://app.atime.me/music-api-server/?p=xiami&t=songlist&i=20526,1772292423&c=abc123](https://app.atime.me/music-api-server/?p=xiami&t=songlist&i=20526,1772292423&c=abc123)
 
 ### 请求
 
