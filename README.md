@@ -13,7 +13,7 @@
 
 ## 安装(debian/ubuntu)
 
-首先检查`GOPATH`变量是否正确设置，如果未设置，参考[这里](http://blog.atime.me/note/golang-summary.html#3867e350ebb33a487c4ac5f7787e1c29)进行设置。
+首先检查`GOPATH`变量是否正确设置，如果未设置，参考[这里](http://mawenbao.com/note/golang-summary.html#3867e350ebb33a487c4ac5f7787e1c29)进行设置。
 
     # install redis-server
     sudo apt-get install redis-server
@@ -53,7 +53,7 @@
 ## API
 ### Demo
 
-[https://app.atime.me/music-api-server/?p=xiami&t=songlist&i=20526,1772292423&c=abc123](https://app.atime.me/music-api-server/?p=xiami&t=songlist&i=20526,1772292423&c=abc123)
+[https://app.mawenbao.com/music-api-server/?p=xiami&t=songlist&i=20526,1772292423&c=abc123](https://app.mawenbao.com/music-api-server/?p=xiami&t=songlist&i=20526,1772292423&c=abc123)
 
 ### 请求
 
