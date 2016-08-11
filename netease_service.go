@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"strconv"
 	"strings"
 )
 
@@ -91,6 +90,7 @@ type NeteaseSong struct {
 	HighQualityMusic   NeteaseMusicDetail `json:"hMusic"`
 	MediumQualityMusic NeteaseMusicDetail `json:"mMusic"`
 	LowQualityMusic    NeteaseMusicDetail `json:"lMusic"`
+	BestQualityMusic   NeteaseMusicDetail `json:"bMusic"`
 }
 
 func (song *NeteaseSong) UpdateUrl(quality string) *NeteaseSong {
@@ -102,17 +102,20 @@ func (song *NeteaseSong) UpdateUrl(quality string) *NeteaseSong {
 	if gMusicQualityLow == quality {
 		musicDetail = &song.LowQualityMusic
 	}
+	if musicDetail.DfsID == "" {
+		musicDetail = &song.BestQualityMusic
+	}
 	song.Url = musicDetail.MakeUrl()
 	return song
 }
 
 type NeteaseMusicDetail struct {
-	Bitrate int `json:"bitrate"`
-	DfsID   int `json:"dfsId"`
+	Bitrate json.Number `json:"bitrate,Number"`
+	DfsID   json.Number `json:"dfsId,Number"`
 }
 
 func (md *NeteaseMusicDetail) MakeUrl() string {
-	strDfsID := strconv.Itoa(md.DfsID)
+	strDfsID := string(md.DfsID)
 	// load eid from cache first
 	eidKey := gCacheKeyPrefix + gNeteaseEIDCacheKeyPrefix + strDfsID
 	eid := GetCache(eidKey, false)
